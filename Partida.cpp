@@ -1,4 +1,5 @@
 #include <cstdio>
+
 #include "Partida.hpp"
 
 jogada Partida::fazJogada(int x, int y, char comando) {
