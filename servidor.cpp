@@ -6,6 +6,8 @@
 #include <strings.h>
 #include <cstring>
 
+#include <string>
+
 
 /* Linux headers */
 #include <time.h>
@@ -22,15 +24,18 @@
 #include <pthread.h>
 
 #include "Partida.hpp"
+#include "Usuario.hpp"
 
 
 /* Macros */
 #define LISTENQ 1
 #define MAX_CONNECTIONS 100
+#define MAXLINE 4096
 
 // UHUL
 void* client_connection(void*);
 
+std::vector<Usuario> usuarios;
 
 int main (int argc, char **argv) {
 
@@ -44,6 +49,7 @@ int main (int argc, char **argv) {
 	pthread_t aux;
 	std::vector<pthread_t> TCPThreads;
 
+	Conexao *conexaoaux;
 
 
 	if (argc != 2) {
@@ -71,14 +77,20 @@ int main (int argc, char **argv) {
 		exit(4);
 	}
 
-	for (;;) {
+	while (true) {
 		if ((connfd = accept(listenfd, (struct sockaddr *) NULL, NULL)) == -1 ) {
 			perror("accept :(\n");
 			exit(5);
 		}
 
 
-		if (pthread_create(&aux, NULL, client_connection, NULL))
+		conexaoaux = new ConexaoTCP(connfd);
+
+		Usuario useraux(conexaoaux);
+		
+		usuarios.emplace_back(useraux);
+
+		if (pthread_create(&aux, NULL, client_connection, (void *) &connfd))
 		{
 			printf ("Erro na criação da thread %d.\n", number_of_connections);
 			exit (EXIT_FAILURE);
@@ -88,43 +100,31 @@ int main (int argc, char **argv) {
 
 		sprintf(string, "Conexão estabelecida\n");
 		write(connfd, string, strlen(string));  
-		break; // TEM QUE TIRAR ISSO DAQUI DEPOIS!!!
+		// break; // TEM QUE TIRAR ISSO DAQUI DEPOIS!!!
 	}
-
-
-	Partida partida;
-
-	std::cout << partida.fazJogada(0, 0, 'X')<< std::endl;
-	std::cout << partida.verificaResultado() << std::endl;
-	partida.imprimeTabuleiro();
-	std::cout << partida.fazJogada(0, 1, 'O')<< std::endl;
-	std::cout << partida.verificaResultado() << std::endl;
-	partida.imprimeTabuleiro();
-	std::cout << partida.fazJogada(0, 2, 'X')<< std::endl;
-	std::cout << partida.verificaResultado() << std::endl;
-	partida.imprimeTabuleiro();
-	std::cout << partida.fazJogada(1, 0, 'O')<< std::endl;
-	std::cout << partida.verificaResultado() << std::endl;
-	partida.imprimeTabuleiro();
-	std::cout << partida.fazJogada(1, 1, 'O')<< std::endl;
-	std::cout << partida.verificaResultado() << std::endl;
-	partida.imprimeTabuleiro();
-	std::cout << partida.fazJogada(1, 2, 'X')<< std::endl;
-	std::cout << partida.verificaResultado() << std::endl;
-	partida.imprimeTabuleiro();
-	std::cout << partida.fazJogada(2, 0, 'O')<< std::endl;
-	std::cout << partida.verificaResultado() << std::endl;
-	partida.imprimeTabuleiro();
-	std::cout << partida.fazJogada(2, 1, 'X')<< std::endl;
-	std::cout << partida.verificaResultado() << std::endl;
-	partida.imprimeTabuleiro();
-	std::cout << partida.fazJogada(2, 2, 'X')<< std::endl;
-	std::cout << partida.verificaResultado() << std::endl;
-	partida.imprimeTabuleiro();
 
 	return 0;	
 }
 
-void* client_connection(void*) {
+void* client_connection(void* entrada) {
+	int *aux = (int *) entrada;
+	int connfd = *(aux);
+	int x, y;
+	char simbolo;
+
+	Partida partida;
+
+	/* Armazena linhas recebidas do cliente */
+	char    recvline[MAXLINE + 1];
+	/* Armazena o tamanho da string lida do cliente */
+	ssize_t  n;
+
+	while ((n=read(connfd, recvline, MAXLINE)) > 0) {
+		sscanf(recvline, "%d %d %c", &x, &y, &simbolo);
+		partida.fazJogada(x,y,simbolo);
+		std::cout << partida.verificaResultado() << std::endl;
+		partida.imprimeTabuleiro();
+	}
+
 	pthread_exit(NULL);
 }
