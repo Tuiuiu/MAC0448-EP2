@@ -1,5 +1,5 @@
 #include "Usuario.hpp"
 
-void Usuario::escreveParaUsuario(std::string mensagem) {
+void Usuario::escreve(std::string mensagem) {
 	conexao->enviaMensagem(mensagem);
 }
