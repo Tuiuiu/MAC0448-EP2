@@ -16,6 +16,7 @@ class Conexao {
 class ConexaoTCP : public Conexao {
   public:
     ConexaoTCP(int connfd) : connfd_(connfd) {}
+    ~ConexaoTCP() {}
     void enviaMensagem(string mensagem);
     TipoConexao tipoConexao();
   private:
