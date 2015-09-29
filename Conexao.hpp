@@ -1,14 +1,20 @@
 #include <string>
 
+using std::string;
+
+enum TipoConexao {TCP, UDP};
+
 class Conexao {
   public:
-    virtual void enviaMensagem(std::string mensagem) = 0;
+    virtual void enviaMensagem(string mensagem) = 0;
+    virtual TipoConexao tipoConexao() = 0;
 };
 
 class ConexaoTCP : public Conexao {
   public:
     ConexaoTCP(int connfd) : connfd_(connfd) {}
-    void enviaMensagem(std::string mensagem);
+    void enviaMensagem(string mensagem);
+    TipoConexao tipoConexao();
   private:
     int connfd_;
 };

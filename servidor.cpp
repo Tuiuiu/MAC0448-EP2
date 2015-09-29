@@ -35,7 +35,7 @@
 // UHUL
 void* client_connection(void*);
 
-std::vector<Usuario> usuarios;
+std::vector<Usuario> usuarios_tcp;
 
 int main (int argc, char **argv) {
 
@@ -88,7 +88,7 @@ int main (int argc, char **argv) {
 
 		Usuario useraux(conexaoaux);
 		
-		usuarios.emplace_back(useraux);
+		usuarios_tcp.emplace_back(useraux);
 
 		if (pthread_create(&aux, NULL, client_connection, (void *) &connfd))
 		{

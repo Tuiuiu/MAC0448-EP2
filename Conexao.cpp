@@ -2,6 +2,12 @@
 
 #include "Conexao.hpp"
 
-void ConexaoTCP::enviaMensagem(std::string mensagem) {
+using std::string;
+
+void ConexaoTCP::enviaMensagem(string mensagem) {
   write(connfd_, mensagem.c_str(), mensagem.length());
+}
+
+TipoConexao ConexaoTCP::tipoConexao() {
+	return TCP;
 }
