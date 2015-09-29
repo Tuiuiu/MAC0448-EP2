@@ -1,0 +1,5 @@
+Funções do Protocolo :
+
+LIST   					 - lista os usuários da mesma conexão que o usuário atual
+LOGIN  username password - conecta o usuário com login username e senha password
+NEWUSR username password - cria novo usuario com login username e senha password

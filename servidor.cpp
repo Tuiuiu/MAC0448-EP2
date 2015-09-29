@@ -35,7 +35,7 @@
 // UHUL
 void* client_connection(void*);
 
-std::vector<Usuario> usuarios_tcp;
+std::vector<Usuario*> usuarios_tcp;
 
 int main (int argc, char **argv) {
 
@@ -112,9 +112,11 @@ void* client_connection(void* entrada) {
 	//Usuario* usuario = (Usuario*) entrada;
 	//int x, y;
 	//char simbolo;
-	//bool logado = false;
+	bool loginExiste = false;
+	bool logado = false;
 	std::string comando, arg1, arg2;
 
+	Usuario *usuario;
 	Partida partida;
 
 	/* Armazena linhas recebidas do cliente */
@@ -138,6 +140,7 @@ void* client_connection(void* entrada) {
 		comando = resultado[1];
 		arg1 = resultado[2];
 		arg2 = resultado[3];
+		std::string stringaux;
 		/*for(size_t i=0; i<resultado.size(); ++i)
 		{
 		    std::cout << "Resultado " << i << " é: " << resultado[i] << std::endl;
@@ -147,21 +150,81 @@ void* client_connection(void* entrada) {
 
 		// FAZER O LIST
 
-		/*if (logado)
+		if (logado)
 		{
-			if (strcmp (recvline, "LIST") == 0)
+			if (comando == "LIST")
 			{
 				usuario->escreve ("Login\tHora de login\tEstado\n");
-				for (auto usuario : usuarios)
+				for (auto usuario : usuarios_tcp)
 				{
-					usuario->escreve ();
+					stringaux = usuario->get_login() + "\t" + "10:00 \t\t ONLINE\n";
+					usuario->escreve(stringaux);
 				}
 			}
 		}
 		else
 		{
-
-		}*/
+			if (comando == "LOGIN")
+			{
+				loginExiste = false;
+				if (!arg1.empty() && !arg2.empty()) {
+					for (auto user : usuarios_tcp) {
+						if (user->get_login() == arg1) {
+							if (user->confere_senha(arg2)) {
+								ConexaoTCP *conexaoaux = new ConexaoTCP(connfd);
+								user->atualizaConexao(conexaoaux);
+								usuario = user;
+								loginExiste = true;
+								logado = true;
+								usuario->conecta();
+								stringaux = "Conectado como \'";
+								stringaux += arg1;
+								stringaux += "\'.\n";
+								write(connfd, stringaux.c_str(), stringaux.length());
+								break;
+							}
+							else {
+								stringaux = "Senha incorreta\n";
+								write(connfd, stringaux.c_str(), stringaux.length());
+								loginExiste = true;
+								break;
+							}
+						}
+					}
+					if (loginExiste == false) {
+						stringaux = "Login \'";
+						stringaux += arg1; 
+						stringaux += "\' não existente\n";
+						write(connfd, stringaux.c_str(), stringaux.length());
+					}
+				}
+				else {
+					stringaux = "Argumentos para LOGIN não estão corretos. Formato : 'LOGIN usuario senha'\n";
+					write(connfd, stringaux.c_str(), stringaux.length());
+				}
+			}
+			else if (comando == "NEWUSR")
+			{
+				if (!arg1.empty() && !arg2.empty()) {
+					usuario =  new Usuario(new ConexaoTCP(connfd), arg1, arg2);
+					usuarios_tcp.emplace_back(usuario);
+					logado = true;
+					stringaux = "Novo usuário criado. Conectado como \'";
+					stringaux += arg1;
+					stringaux += "\'.\n";
+					write(connfd, stringaux.c_str(), stringaux.length());
+				}
+			}
+			else 
+			{
+				stringaux = "Antes de solicitar qualquer comando, é necessário que esteja logado.\n";
+				write(connfd, stringaux.c_str(), stringaux.length());
+				stringaux = "Se possui uma conta, digite \'LOGIN usuario senha\' para se conectar.\n";
+				write(connfd, stringaux.c_str(), stringaux.length());
+				stringaux = "Caso contrario, digite \'NEWUSR usuario senha\' para criar um novo usuário.\n";
+				write(connfd, stringaux.c_str(), stringaux.length());
+			}
+		}
 
 		strcpy (recvline, "");
 	}	
