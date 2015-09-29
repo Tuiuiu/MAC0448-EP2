@@ -1,3 +1,6 @@
+#ifndef _CONEXAO_HPP
+#define _CONEXAO_HPP
+
 #include <string>
 
 using std::string;
@@ -18,3 +21,6 @@ class ConexaoTCP : public Conexao {
   private:
     int connfd_;
 };
+
+
+#endif // _CONEXAO_HPP

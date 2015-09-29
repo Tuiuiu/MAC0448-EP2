@@ -5,8 +5,8 @@
 #include <errno.h>
 #include <strings.h>
 #include <cstring>
-
 #include <string>
+#include <regex>
 
 
 /* Linux headers */
@@ -49,7 +49,7 @@ int main (int argc, char **argv) {
 	pthread_t aux;
 	std::vector<pthread_t> TCPThreads;
 
-	Conexao *conexaoaux;
+	//Conexao *conexaoaux;
 
 
 	if (argc != 2) {
@@ -84,11 +84,11 @@ int main (int argc, char **argv) {
 		}
 
 
-		conexaoaux = new ConexaoTCP(connfd);
+		/*conexaoaux = new ConexaoTCP(connfd);
 
-		Usuario useraux(conexaoaux);
+		Usuario* useraux(conexaoaux);
 		
-		usuarios_tcp.emplace_back(useraux);
+		usuarios_tcp.emplace_back(useraux);*/
 
 		if (pthread_create(&aux, NULL, client_connection, (void *) &connfd))
 		{
@@ -107,10 +107,13 @@ int main (int argc, char **argv) {
 }
 
 void* client_connection(void* entrada) {
-	int *aux = (int *) entrada;
+	int* aux = (int*) entrada;
 	int connfd = *(aux);
-	int x, y;
-	char simbolo;
+	//Usuario* usuario = (Usuario*) entrada;
+	//int x, y;
+	//char simbolo;
+	//bool logado = false;
+	std::string comando, arg1, arg2;
 
 	Partida partida;
 
@@ -120,11 +123,48 @@ void* client_connection(void* entrada) {
 	ssize_t  n;
 
 	while ((n=read(connfd, recvline, MAXLINE)) > 0) {
-		sscanf(recvline, "%d %d %c", &x, &y, &simbolo);
+		/*sscanf(recvline, "%d %d %c", &x, &y, &simbolo);
 		partida.fazJogada(x,y,simbolo);
 		std::cout << partida.verificaResultado() << std::endl;
-		partida.imprimeTabuleiro();
-	}
+		partida.imprimeTabuleiro();*/
+
+		recvline[n] = '\0';
+
+		printf ("Recvline: %s\n", recvline);
+
+		std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+		std::smatch resultado;
+		std::regex_search(std::string(recvline), resultado, rgx);
+		comando = resultado[1];
+		arg1 = resultado[2];
+		arg2 = resultado[3];
+		/*for(size_t i=0; i<resultado.size(); ++i)
+		{
+		    std::cout << "Resultado " << i << " é: " << resultado[i] << std::endl;
+		}*/
+
+		printf ("Comando: %s\nArg1: %s\nArg2: %s\n", comando.c_str(), arg1.c_str(), arg2.c_str());
+
+		// FAZER O LIST
+
+		/*if (logado)
+		{
+			if (strcmp (recvline, "LIST") == 0)
+			{
+				usuario->escreve ("Login\tHora de login\tEstado\n");
+				for (auto usuario : usuarios)
+				{
+					usuario->escreve ();
+				}
+			}
+		}
+		else
+		{
+
+		}*/
+
+		strcpy (recvline, "");
+	}	
 
 	pthread_exit(NULL);
 }
