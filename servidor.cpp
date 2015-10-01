@@ -157,8 +157,12 @@ void* client_connection(void* entrada) {
 				usuario->escreve ("Login\tHora de login\tEstado\n");
 				for (auto usuario : usuarios_tcp)
 				{
-					stringaux = usuario->get_login() + "\t" + "10:00 \t\t ONLINE\n";
-					usuario->escreve(stringaux);
+					if (usuario->esta_conectado())
+					{
+						stringaux = usuario->get_login() + "\t" + usuario->get_hora_ultima_conexao() +"\t";
+						usuario->esta_em_jogo() ? stringaux += "Em jogo\n" : stringaux += "Ocioso\n";
+						usuario->escreve(stringaux);
+					}
 				}
 			}
 		}

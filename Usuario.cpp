@@ -7,6 +7,7 @@ void Usuario::escreve(std::string mensagem) {
 void Usuario::atualizaConexao(Conexao *novaConexao) {
 	free (conexao);
 	conexao = novaConexao;
+	set_hora_ultima_conexao();
 }
 
 void Usuario::conecta() {
@@ -31,4 +32,28 @@ std::string Usuario::get_login() {
 
 bool Usuario::confere_senha(std::string senha_arg) {
 	return senha_arg == senha;
+}
+
+bool Usuario::esta_conectado() {
+	return conectado;
+}
+
+bool Usuario::esta_em_jogo() {
+	return em_jogo;
+}
+
+std::string Usuario::get_hora_ultima_conexao()
+{
+	struct tm* timeinfo;
+	char buffer[80];
+
+	timeinfo = localtime (&hora_ultima_conexao);
+	strftime (buffer, 80, "%T", timeinfo);
+
+	return std::string (buffer);
+}
+
+void Usuario::set_hora_ultima_conexao()
+{
+  	time (&hora_ultima_conexao);
 }
