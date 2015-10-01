@@ -157,9 +157,22 @@ void* client_connection(void* entrada) {
 				usuario->escreve ("Login\tHora de login\tEstado\n");
 				for (auto usuario : usuarios_tcp)
 				{
-					stringaux = usuario->get_login() + "\t" + "10:00 \t\t ONLINE\n";
-					usuario->escreve(stringaux);
+					if (usuario->esta_conectado())
+					{
+						stringaux = usuario->get_login() + "\t" + usuario->get_hora_ultima_conexao() +"\t";
+						usuario->esta_em_jogo() ? stringaux += "Em jogo\n" : stringaux += "Ocioso\n";
+						usuario->escreve(stringaux);
+					}
 				}
+			}
+			else if (comando == "LOGOUT")
+			{
+				logado = false;
+				usuario->escreve ("Logout feito com sucesso\n");
+			}
+			else if (comando == "QUIT")
+			{
+				pthread_exit (NULL);
 			}
 		}
 		else
@@ -206,13 +219,32 @@ void* client_connection(void* entrada) {
 			else if (comando == "NEWUSR")
 			{
 				if (!arg1.empty() && !arg2.empty()) {
-					usuario =  new Usuario(new ConexaoTCP(connfd), arg1, arg2);
-					usuarios_tcp.emplace_back(usuario);
-					logado = true;
-					stringaux = "Novo usuário criado. Conectado como \'";
-					stringaux += arg1;
-					stringaux += "\'.\n";
-					write(connfd, stringaux.c_str(), stringaux.length());
+					bool usuario_ja_existe = false;
+
+					for (auto useraux : usuarios_tcp)
+					{
+						if (useraux->get_login() == arg1)
+						{
+							usuario_ja_existe = true;
+							break;
+						}
+					}
+
+					if (usuario_ja_existe)
+					{
+						stringaux = "Login " + arg1 + " já existe. Escolha outro.\n";
+						write(connfd, stringaux.c_str(), stringaux.length());
+					}
+					else
+					{
+						usuario =  new Usuario(new ConexaoTCP(connfd), arg1, arg2);
+						usuarios_tcp.emplace_back(usuario);
+						logado = true;
+						stringaux = "Novo usuário criado. Conectado como \'";
+						stringaux += arg1;
+						stringaux += "\'.\n";
+						write(connfd, stringaux.c_str(), stringaux.length());
+					}
 				}
 			}
 			else 
