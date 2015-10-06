@@ -11,7 +11,7 @@ class Usuario {
   		   : conexao(conexao),conectado(true),em_jogo(false) 
   		   { login = login_arg; senha = senha_arg; set_hora_ultima_conexao(); }
   	void escreve(std::string mensagem);
-  	void atualizaConexao(Conexao *novaConexao);
+  	void atualiza_conexao(Conexao *novaConexao);
   	bool esta_conectado();
   	bool esta_em_jogo();
   	void conecta();
@@ -23,13 +23,14 @@ class Usuario {
   	std::string get_hora_ultima_conexao();
 
   private:
-  	void set_hora_ultima_conexao();
   	Conexao *conexao;
   	std::string login;
   	std::string senha;
   	bool conectado;
   	bool em_jogo;
   	time_t hora_ultima_conexao;
+  	
+  	void set_hora_ultima_conexao();
 };
 
 #endif // _USUARIO_HPP

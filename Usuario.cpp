@@ -1,10 +1,10 @@
 #include "Usuario.hpp"
 
 void Usuario::escreve(std::string mensagem) {
-	conexao->enviaMensagem(mensagem);
+	conexao->envia_mensagem(mensagem);
 }
 
-void Usuario::atualizaConexao(Conexao *novaConexao) {
+void Usuario::atualiza_conexao(Conexao *novaConexao) {
 	free (conexao);
 	conexao = novaConexao;
 	set_hora_ultima_conexao();
