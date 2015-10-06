@@ -9,16 +9,18 @@ enum TipoConexao {TCP, UDP};
 
 class Conexao {
   public:
-    virtual void enviaMensagem(string mensagem) = 0;
-    virtual TipoConexao tipoConexao() = 0;
+    virtual void envia_mensagem(string mensagem) = 0;
+    virtual int recebe_mensagem(char* recvline) = 0;
+    virtual TipoConexao tipo_conexao() = 0;
 };
 
 class ConexaoTCP : public Conexao {
   public:
     ConexaoTCP(int connfd) : connfd_(connfd) {}
     ~ConexaoTCP() {}
-    void enviaMensagem(string mensagem);
-    TipoConexao tipoConexao();
+    void envia_mensagem(string mensagem);
+    int recebe_mensagem(char* recvline);
+    TipoConexao tipo_conexao();
   private:
     int connfd_;
 };

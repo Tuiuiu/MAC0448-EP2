@@ -2,12 +2,18 @@
 
 #include "Conexao.hpp"
 
+#define MAXLINE 100
+
 using std::string;
 
-void ConexaoTCP::enviaMensagem(string mensagem) {
+void ConexaoTCP::envia_mensagem(string mensagem) {
   write(connfd_, mensagem.c_str(), mensagem.length());
 }
 
-TipoConexao ConexaoTCP::tipoConexao() {
+int ConexaoTCP::recebe_mensagem(char* recvline) {
+	return read(connfd_, recvline, MAXLINE);
+}
+
+TipoConexao ConexaoTCP::tipo_conexao() {
 	return TCP;
 }
