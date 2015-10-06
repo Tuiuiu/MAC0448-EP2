@@ -1,4 +1,5 @@
 BIN := servidor
+BIN2 := cliente
 
 CFLAGS = -ansi -Wall -pedantic -std=c++11
 LDFLAGS = -lpthread
@@ -9,6 +10,9 @@ SRC := $(filter-out $(BIN).cpp,$(wildcard *.cpp))
 OBJ := $(SRC:.cpp=.o)
 
 $(BIN): $(OBJ) $(BIN).o
+	$(CC) $^ -o $@ $(LDFLAGS)
+
+$(BIN2): $(OBJ) $(BIN2).o
 	$(CC) $^ -o $@ $(LDFLAGS)
 
 $(BIN).o: %.o: %.cpp
