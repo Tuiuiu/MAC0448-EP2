@@ -185,7 +185,7 @@ void* client_connection(void* entrada) {
 						if (user->get_login() == arg1) {
 							if (user->confere_senha(arg2)) {
 								ConexaoTCP *conexaoaux = new ConexaoTCP(connfd);
-								user->atualizaConexao(conexaoaux);
+								user->atualiza_conexao(conexaoaux);
 								usuario = user;
 								loginExiste = true;
 								logado = true;
