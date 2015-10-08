@@ -1,7 +1,7 @@
 CXXFLAGS = -ansi -Wall -pedantic -std=c++11
 LDFLAGS = -lpthread
 
-CXX = g++
+CC = g++
 
 servidor: servidor.o Partida.o Usuario.o Conexao.o
 
