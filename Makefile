@@ -1,26 +1,21 @@
-BIN := servidor
-BIN2 := cliente
-
-CFLAGS = -ansi -Wall -pedantic -std=c++11
+CXXFLAGS = -ansi -Wall -pedantic -std=c++11
 LDFLAGS = -lpthread
 
-CC = g++
+CXX = g++
 
-SRC := $(filter-out $(BIN).cpp,$(wildcard *.cpp))
-OBJ := $(SRC:.cpp=.o)
+servidor: servidor.o Partida.o Usuario.o Conexao.o
 
-$(BIN): $(OBJ) $(BIN).o
-	$(CC) $^ -o $@ $(LDFLAGS)
+cliente: cliente.o Conexao.o
 
-$(BIN2): $(OBJ) $(BIN2).o
-	$(CC) $^ -o $@ $(LDFLAGS)
+cliente.o: Conexao.hpp
 
-$(BIN).o: %.o: %.cpp
-	$(CC) $(CFLAGS) -c $< -o $@
+servidor.o: Partida.hpp Usuario.hpp Conexao.hpp
 
-$(OBJ): %.o: %.cpp %.hpp
-	$(CC) $(CFLAGS) -c $< -o $@
+Partida.o: Partida.hpp Usuario.hpp Conexao.hpp
 
-.PHONY: clean
-clean:
-	rm -f *.o $(BIN)
+Usuario.o: Usuario.hpp Conexao.hpp
+
+Conexao.o: Conexao.hpp
+
+.PHONY clean:
+	rm *.o servidor cliente
