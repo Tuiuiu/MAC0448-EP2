@@ -26,6 +26,7 @@
 #include <queue>
 #include <vector>
 #include <cstdlib>
+#include <iostream>
 
 #include "Conexao.hpp"
 
@@ -45,6 +46,8 @@ struct ComparaMensagem {
 };
 
 void recebe_mensagens_servidor(Conexao *conexao);
+
+void interacao_usuario(Conexao *conexao);
 
 
 int main(int argc, char **argv) {
@@ -79,13 +82,14 @@ int main(int argc, char **argv) {
             fprintf(stderr,"connect error :(\n");
 
         Conexao *conexao_tcp = new ConexaoTCP(sockfd);
-        std::thread recebe_mensagens_tcp (recebe_mensagens_servidor, conexao_tcp);      
+        {
+            std::thread thread_recebe_mensagens_servidor_tcp (recebe_mensagens_servidor, conexao_tcp);      
+            std::thread thread_interacao_usuario_tcp (interacao_usuario, conexao_tcp);
+            thread_interacao_usuario_tcp.join();
+        }
     }
 
-    std::thread(interacao_usuario());
-
-    // printf("Bem-vindo a'O Jogo da Velha\n");
-       
+    
     return 0;
 }
 
@@ -113,7 +117,87 @@ void recebe_mensagens_servidor(Conexao *conexao) {
         fprintf(stderr,"read error :(\n");
 }
 
-void interacao_usuario() {
+void interacao_usuario(Conexao *conexao) {
+
+    int opcao;
+    bool logado = false;
+    bool cadastrando = false;
+    bool quer_sair = false;
+    std::string aux1, aux2, aux3, output;
+    // char str1[31], str2[31], str3[31];
     printf ("Olá senhor usuário, gostaria de jogar um jogo? :v\n MUAHAHA \n =) \n");
+
+
+    printf ("Antes de executar qualquer ação, você deve estar logado.\n");
+    while (!quer_sair){
+        while (!logado && !quer_sair) {
+            printf ("Digite: \n  1 para fazer login\n  2 para criar um novo usuário\n  3 para sair do programa\n");
+            scanf ("%d", &opcao);
+            aux1 = "";
+            aux2 = "";
+            aux3 = "";
+            if (opcao == 1) {
+                printf("Digite seu login e senha. Exemplo: meuusuario minhasenha\n");
+                std::cin >> aux1 >> aux2;
+                if (!aux1.empty() && !aux2.empty()) {
+                    output = "LOGIN " + aux1 + " " + aux2;
+                    conexao->envia_mensagem(output);
+                    // Aqui verificaria se o login deu certo.
+                    // if deu certo :
+                    printf("Logado com sucesso!\n");
+                    logado = true;
+                    // else, login deu xabú
+                } else { printf ("Formato incorreto. Tente novamente.\n"); }
+            } else if (opcao == 2) {
+                cadastrando = true;
+                while (cadastrando) {
+                    aux1 = "";
+                    aux2 = "";
+                    aux3 = "";
+                    printf("Criando novo usuário. Digite um login: \n");
+                    std::cin >> aux1;
+                    // std::cin >> aux1 >> aux2; // scanf("%30s", aux1);
+                    // if(!aux2.empty()) {
+                    //     printf ("Excedeu número de parâmetros, tente novamente.\n");
+                    //     continue;
+                    // }
+                    printf("Digita a senha: \n");
+                    std::cin >> aux2;
+                    // std::cin >> aux2 >> aux3; // scanf("%30s", aux2);
+                    // if (!aux3.empty()) {
+                    //     printf("Não insira espaços na senha! Tente novamente.\n");
+                    //     continue;
+                    // }
+                    printf("Digite novamente a senha: \n");
+                    std::cin >> aux3; // scanf("%30s", aux3);
+
+                    if (aux2 != aux3) {
+                        printf("Confirmação de senha falhou, repita o processo.\n\n");
+                        continue;
+                    } 
+                    else {
+                        // Mandou o cadastro pro servidor... espera resposta.
+
+                        // Se o cadastro deu certo :
+                        cadastrando = false;
+                        printf("Seja bem vindo! Você está conectado.\n");
+                        logado = true;
+
+                        // se não deu :
+                        // printf("DEU XABÚ, repita o processo. \n\n");
+                    }
+                }
+            } else if (opcao == 3) {
+                quer_sair = true;
+            } 
+            else {
+                printf("Comando inválido.");
+            }
+        
+        }
+
+        // while (logado && !quer_sair) {       }
+    }
+    // while (mensagens.empty()) {}
 }
 
