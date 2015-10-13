@@ -2,8 +2,8 @@ Funções do Protocolo :
 
 Cliente envia :						|		Resposta do servidor:
 									|
-NEWUSR								|		A definir;
-LOGIN username password				|		A definir;
+LOGIN username password				|		000 usuario :Login aceito; 001 usuario :Senha incorreta; 002 usuario :Usuário não existe; 
+NEWUSR								|		010 usuario :Usuario criado; 011 usuario :Usuário já existe; 
 LOGOUT								|		A definir;
 LIST 								|		A definir;
 QUIT								| 		A definir;

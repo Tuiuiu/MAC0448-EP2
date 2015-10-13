@@ -27,6 +27,8 @@
 #include <vector>
 #include <cstdlib>
 #include <iostream>
+#include <condition_variable>
+#include <mutex>
 
 #include "Conexao.hpp"
 
@@ -45,10 +47,20 @@ struct ComparaMensagem {
     }
 };
 
+int recebeu_resposta = 0;
+std::condition_variable mensagens_cv;
+std::mutex mtx;
+
+std::priority_queue<Mensagem, std::vector<Mensagem>, ComparaMensagem> mensagens;
+
+
 void recebe_mensagens_servidor(Conexao *conexao);
 
 void interacao_usuario(Conexao *conexao);
 
+bool respostas_para_receber() { 
+    return recebeu_resposta != 0; 
+}
 
 int main(int argc, char **argv) {
     int sockfd;
@@ -96,7 +108,6 @@ int main(int argc, char **argv) {
 void recebe_mensagens_servidor(Conexao *conexao) {
     int  n;
     char recvline[MAXLINE + 1];
-    std::priority_queue<Mensagem, std::vector<Mensagem>, ComparaMensagem> mensagens;
     std::string comando, arg1, arg2;
 
     while ((n = conexao->recebe_mensagem(recvline)) > 0) {
@@ -106,10 +117,16 @@ void recebe_mensagens_servidor(Conexao *conexao) {
         std::regex_search(std::string(recvline), resultado, rgx);
         comando = resultado[1];
         
+        // Prioridade menor = menos importante = final da fila
         if (comando == "REQUEST") {
             mensagens.push(Mensagem(string(recvline), 0));
-        } else {
-            mensagens.push(Mensagem(string(recvline), 1));
+        } 
+        // Prioridade maior = mais importante  = começo da fila
+        else if (comando == "REPLY") {
+            mensagens.push(Mensagem(string(recvline), 2));
+            recebeu_resposta = 1;
+            mensagens_cv.notify_one();
+            printf("Recebemos reply : %s\n", recvline);
         }
 
     }
@@ -137,16 +154,43 @@ void interacao_usuario(Conexao *conexao) {
             aux2 = "";
             aux3 = "";
             if (opcao == 1) {
-                printf("Digite seu login e senha. Exemplo: meuusuario minhasenha\n");
-                std::cin >> aux1 >> aux2;
+                printf("Digite seu login: \n");
+                std::cin >> aux1;
+                printf("Digite sua senha: \n");
+                std::cin >> aux2;
                 if (!aux1.empty() && !aux2.empty()) {
                     output = "LOGIN " + aux1 + " " + aux2;
+
+                    recebeu_resposta = 0;
                     conexao->envia_mensagem(output);
-                    // Aqui verificaria se o login deu certo.
-                    // if deu certo :
-                    printf("Logado com sucesso!\n");
-                    logado = true;
-                    // else, login deu xabú
+
+                    std::unique_lock<std::mutex> lck(mtx);
+                    mensagens_cv.wait(lck, respostas_para_receber);
+
+                    Mensagem msg(mensagens.top());
+                    aux3 = msg.conteudo;
+                    mensagens.pop(); 
+
+                    std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+                    std::smatch resultado;
+                    std::regex_search(aux3, resultado, rgx);
+                    std::string comando = resultado[1];
+                    std::string arg1 = resultado[2];
+                    std::string arg2 = resultado[3];
+              
+
+                    if (arg1 == "000") {
+                        printf("Logado com sucesso como usuário %s.\n", arg2.c_str());
+                        logado = true;     
+                    }
+                    else if (arg1 == "001") {
+                        printf("Senha incorreta para usuário %s, tente novamente.\n", arg2.c_str());
+                        logado = false;
+                    }
+                    else if (arg1 == "002") {
+                        printf("Usuário %s não existe!\n", arg2.c_str());
+                        logado = false;
+                    }
                 } else { printf ("Formato incorreto. Tente novamente.\n"); }
             } else if (opcao == 2) {
                 cadastrando = true;
@@ -177,14 +221,36 @@ void interacao_usuario(Conexao *conexao) {
                     } 
                     else {
                         // Mandou o cadastro pro servidor... espera resposta.
+                        output = "NEWUSR " + aux1 + " " + aux2;
 
-                        // Se o cadastro deu certo :
-                        cadastrando = false;
-                        printf("Seja bem vindo! Você está conectado.\n");
-                        logado = true;
+                        recebeu_resposta = 0;
+                        conexao->envia_mensagem(output);
 
-                        // se não deu :
-                        // printf("DEU XABÚ, repita o processo. \n\n");
+                        std::unique_lock<std::mutex> lck(mtx);
+                        mensagens_cv.wait(lck, respostas_para_receber);
+
+                        Mensagem msg(mensagens.top());
+                        aux3 = msg.conteudo;
+                        mensagens.pop(); 
+
+                        std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+                        std::smatch resultado;
+                        std::regex_search(aux3, resultado, rgx);
+                        std::string comando = resultado[1];
+                        std::string arg1 = resultado[2];
+                        std::string arg2 = resultado[3];
+
+                        if (arg1 == "010") {
+                            // Se o cadastro deu certo :
+                            cadastrando = false;
+                            printf("Seja bem vindo! Você está conectado como %s.\n", arg2.c_str());
+                            logado = true;                            
+                        }
+                        else if (arg1 == "011") {
+                            printf("Usuário %s já existe.\n", arg2.c_str());
+                            cadastrando = true;
+                            logado = false;
+                        }
                     }
                 }
             } else if (opcao == 3) {

@@ -84,13 +84,13 @@ int main (int argc, char **argv) {
 		}
 
 
-		/*conexaoaux = new ConexaoTCP(connfd);
+		Conexao *conexaoaux = new ConexaoTCP(connfd);
 
-		Usuario* useraux(conexaoaux);
+		/* Usuario* useraux(conexaoaux);
 		
 		usuarios_tcp.emplace_back(useraux);*/
 
-		if (pthread_create(&aux, NULL, client_connection, (void *) &connfd))
+		if (pthread_create(&aux, NULL, client_connection, (void *) conexaoaux))
 		{
 			printf ("Erro na criação da thread %d.\n", number_of_connections);
 			exit (EXIT_FAILURE);
@@ -99,7 +99,7 @@ int main (int argc, char **argv) {
 		TCPThreads.emplace_back(aux);
 
 		sprintf(string, "Conexão estabelecida\n");
-		write(connfd, string, strlen(string));  
+		conexaoaux->envia_mensagem(string); // write(connfd, string, strlen(string));  
 		// break; // TEM QUE TIRAR ISSO DAQUI DEPOIS!!!
 	}
 
@@ -107,8 +107,9 @@ int main (int argc, char **argv) {
 }
 
 void* client_connection(void* entrada) {
-	int* aux = (int*) entrada;
-	int connfd = *(aux);
+	// int* aux = (int*) entrada;
+	// int connfd = *(aux);
+	Conexao *conexao = (Conexao*) entrada;
 	//Usuario* usuario = (Usuario*) entrada;
 	//int x, y;
 	//char simbolo;
@@ -124,7 +125,7 @@ void* client_connection(void* entrada) {
 	/* Armazena o tamanho da string lida do cliente */
 	ssize_t  n;
 
-	while ((n=read(connfd, recvline, MAXLINE)) > 0) {
+	while ((n=conexao->recebe_mensagem(recvline)) > 0) {
 		/*sscanf(recvline, "%d %d %c", &x, &y, &simbolo);
 		partida.fazJogada(x,y,simbolo);
 		std::cout << partida.verificaResultado() << std::endl;
@@ -184,36 +185,36 @@ void* client_connection(void* entrada) {
 					for (auto user : usuarios_tcp) {
 						if (user->get_login() == arg1) {
 							if (user->confere_senha(arg2)) {
-								ConexaoTCP *conexaoaux = new ConexaoTCP(connfd);
-								user->atualiza_conexao(conexaoaux);
+								user->atualiza_conexao(conexao);
 								usuario = user;
 								loginExiste = true;
 								logado = true;
 								usuario->conecta();
-								stringaux = "Conectado como \'";
+								//stringaux = "Conectado como \'";
+								//stringaux += arg1;
+								//stringaux += "\'.\n";
+								stringaux = "REPLY 000 ";
 								stringaux += arg1;
-								stringaux += "\'.\n";
-								write(connfd, stringaux.c_str(), stringaux.length());
+								conexao->envia_mensagem(stringaux);
 								break;
 							}
 							else {
-								stringaux = "Senha incorreta\n";
-								write(connfd, stringaux.c_str(), stringaux.length());
+								stringaux = "REPLY 001 ";
+								stringaux += arg1;
+								conexao->envia_mensagem(stringaux);
 								loginExiste = true;
 								break;
 							}
 						}
 					}
 					if (loginExiste == false) {
-						stringaux = "Login \'";
-						stringaux += arg1; 
-						stringaux += "\' não existente\n";
-						write(connfd, stringaux.c_str(), stringaux.length());
+						//stringaux = "Login \'";
+						//stringaux += arg1; 
+						//stringaux += "\' não existente\n";
+						stringaux = "REPLY 002 ";
+						stringaux += arg1;
+						conexao->envia_mensagem(stringaux);
 					}
-				}
-				else {
-					stringaux = "Argumentos para LOGIN não estão corretos. Formato : 'LOGIN usuario senha'\n";
-					write(connfd, stringaux.c_str(), stringaux.length());
 				}
 			}
 			else if (comando == "NEWUSR")
@@ -232,29 +233,28 @@ void* client_connection(void* entrada) {
 
 					if (usuario_ja_existe)
 					{
-						stringaux = "Login " + arg1 + " já existe. Escolha outro.\n";
-						write(connfd, stringaux.c_str(), stringaux.length());
+						stringaux = "REPLY 011 " + arg1;
+						conexao->envia_mensagem(stringaux);
 					}
 					else
 					{
-						usuario =  new Usuario(new ConexaoTCP(connfd), arg1, arg2);
+						usuario =  new Usuario(conexao, arg1, arg2);
 						usuarios_tcp.emplace_back(usuario);
 						logado = true;
-						stringaux = "Novo usuário criado. Conectado como \'";
+						stringaux = "REPLY 010 ";
 						stringaux += arg1;
-						stringaux += "\'.\n";
-						write(connfd, stringaux.c_str(), stringaux.length());
+						conexao->envia_mensagem(stringaux);
 					}
 				}
 			}
 			else 
 			{
 				stringaux = "Antes de solicitar qualquer comando, é necessário que esteja logado.\n";
-				write(connfd, stringaux.c_str(), stringaux.length());
+				conexao->envia_mensagem(stringaux);
 				stringaux = "Se possui uma conta, digite \'LOGIN usuario senha\' para se conectar.\n";
-				write(connfd, stringaux.c_str(), stringaux.length());
+				conexao->envia_mensagem(stringaux);
 				stringaux = "Caso contrario, digite \'NEWUSR usuario senha\' para criar um novo usuário.\n";
-				write(connfd, stringaux.c_str(), stringaux.length());
+				conexao->envia_mensagem(stringaux);
 			}
 		}
 
