@@ -58,6 +58,11 @@ void recebe_mensagens_servidor(Conexao *conexao);
 
 void interacao_usuario(Conexao *conexao);
 
+bool efetuar_login (Conexao* conexao);
+
+bool efetuar_cadastro (Conexao* conexao);
+
+
 bool respostas_para_receber() { 
     return recebeu_resposta != 0; 
 }
@@ -138,7 +143,7 @@ void interacao_usuario(Conexao *conexao) {
 
     int opcao;
     bool logado = false;
-    bool cadastrando = false;
+    //bool cadastrando = false;
     bool quer_sair = false;
     std::string aux1, aux2, aux3, output;
     // char str1[31], str2[31], str3[31];
@@ -150,114 +155,16 @@ void interacao_usuario(Conexao *conexao) {
         while (!logado && !quer_sair) {
             printf ("Digite: \n  1 para fazer login\n  2 para criar um novo usuário\n  3 para sair do programa\n");
             scanf ("%d", &opcao);
-            aux1 = "";
-            aux2 = "";
-            aux3 = "";
+            
             if (opcao == 1) {
-                printf("Digite seu login: \n");
-                std::cin >> aux1;
-                printf("Digite sua senha: \n");
-                std::cin >> aux2;
-                if (!aux1.empty() && !aux2.empty()) {
-                    output = "LOGIN " + aux1 + " " + aux2;
-
-                    recebeu_resposta = 0;
-                    conexao->envia_mensagem(output);
-
-                    std::unique_lock<std::mutex> lck(mtx);
-                    mensagens_cv.wait(lck, respostas_para_receber);
-
-                    Mensagem msg(mensagens.top());
-                    aux3 = msg.conteudo;
-                    mensagens.pop(); 
-
-                    std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
-                    std::smatch resultado;
-                    std::regex_search(aux3, resultado, rgx);
-                    std::string comando = resultado[1];
-                    std::string arg1 = resultado[2];
-                    std::string arg2 = resultado[3];
-              
-
-                    if (arg1 == "000") {
-                        printf("Logado com sucesso como usuário %s.\n", arg2.c_str());
-                        logado = true;     
-                    }
-                    else if (arg1 == "001") {
-                        printf("Senha incorreta para usuário %s, tente novamente.\n", arg2.c_str());
-                        logado = false;
-                    }
-                    else if (arg1 == "002") {
-                        printf("Usuário %s não existe!\n", arg2.c_str());
-                        logado = false;
-                    }
-                } else { printf ("Formato incorreto. Tente novamente.\n"); }
+                logado = efetuar_login(conexao);
             } else if (opcao == 2) {
-                cadastrando = true;
-                while (cadastrando) {
-                    aux1 = "";
-                    aux2 = "";
-                    aux3 = "";
-                    printf("Criando novo usuário. Digite um login: \n");
-                    std::cin >> aux1;
-                    // std::cin >> aux1 >> aux2; // scanf("%30s", aux1);
-                    // if(!aux2.empty()) {
-                    //     printf ("Excedeu número de parâmetros, tente novamente.\n");
-                    //     continue;
-                    // }
-                    printf("Digita a senha: \n");
-                    std::cin >> aux2;
-                    // std::cin >> aux2 >> aux3; // scanf("%30s", aux2);
-                    // if (!aux3.empty()) {
-                    //     printf("Não insira espaços na senha! Tente novamente.\n");
-                    //     continue;
-                    // }
-                    printf("Digite novamente a senha: \n");
-                    std::cin >> aux3; // scanf("%30s", aux3);
-
-                    if (aux2 != aux3) {
-                        printf("Confirmação de senha falhou, repita o processo.\n\n");
-                        continue;
-                    } 
-                    else {
-                        // Mandou o cadastro pro servidor... espera resposta.
-                        output = "NEWUSR " + aux1 + " " + aux2;
-
-                        recebeu_resposta = 0;
-                        conexao->envia_mensagem(output);
-
-                        std::unique_lock<std::mutex> lck(mtx);
-                        mensagens_cv.wait(lck, respostas_para_receber);
-
-                        Mensagem msg(mensagens.top());
-                        aux3 = msg.conteudo;
-                        mensagens.pop(); 
-
-                        std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
-                        std::smatch resultado;
-                        std::regex_search(aux3, resultado, rgx);
-                        std::string comando = resultado[1];
-                        std::string arg1 = resultado[2];
-                        std::string arg2 = resultado[3];
-
-                        if (arg1 == "010") {
-                            // Se o cadastro deu certo :
-                            cadastrando = false;
-                            printf("Seja bem vindo! Você está conectado como %s.\n", arg2.c_str());
-                            logado = true;                            
-                        }
-                        else if (arg1 == "011") {
-                            printf("Usuário %s já existe.\n", arg2.c_str());
-                            cadastrando = true;
-                            logado = false;
-                        }
-                    }
-                }
+                logado = efetuar_cadastro(conexao);
             } else if (opcao == 3) {
                 quer_sair = true;
             } 
             else {
-                printf("Comando inválido.");
+                printf("Comando inválido.\n");
             }
         
         }
@@ -267,3 +174,118 @@ void interacao_usuario(Conexao *conexao) {
     // while (mensagens.empty()) {}
 }
 
+bool efetuar_login (Conexao* conexao) // devolve true se o login deu certo e false caso contrário
+{
+    std::string aux1, aux2, aux3;
+
+    aux1 = "";
+    aux2 = "";
+    aux3 = "";
+
+    printf("Digite seu login: \n");
+    std::cin >> aux1;
+    printf("Digite sua senha: \n");
+    std::cin >> aux2;
+    if (!aux1.empty() && !aux2.empty()) {
+        std::string output = "LOGIN " + aux1 + " " + aux2;
+
+        recebeu_resposta = 0;
+        conexao->envia_mensagem(output);
+
+        std::unique_lock<std::mutex> lck(mtx);
+        mensagens_cv.wait(lck, respostas_para_receber);
+
+        Mensagem msg(mensagens.top());
+        aux3 = msg.conteudo;
+        mensagens.pop(); 
+
+        std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+        std::smatch resultado;
+        std::regex_search(aux3, resultado, rgx);
+        std::string comando = resultado[1];
+        std::string arg1 = resultado[2];
+        std::string arg2 = resultado[3];
+  
+
+        if (arg1 == "000") {
+            printf("Logado com sucesso como usuário %s.\n", arg2.c_str());
+            return true;     
+        }
+        else if (arg1 == "001") {
+            printf("Senha incorreta para usuário %s, tente novamente.\n", arg2.c_str());
+            return false;
+        }
+        else if (arg1 == "002") {
+            printf("Usuário %s não existe!\n", arg2.c_str());
+            return false;
+        }
+    } else {
+        printf ("Formato incorreto. Tente novamente.\n");
+        return false;
+    }
+
+    printf ("Erro inesperado. Tente novamente.\n");
+    return false;
+}
+
+bool efetuar_cadastro (Conexao* conexao) // devolve true se conseguiu cadastrar corretamente
+{
+    std::string aux1 = "";
+    std::string aux2 = "";
+    std::string aux3 = "";
+    printf("Criando novo usuário. Digite um login: \n");
+    std::cin >> aux1;
+    // std::cin >> aux1 >> aux2; // scanf("%30s", aux1);
+    // if(!aux2.empty()) {
+    //     printf ("Excedeu número de parâmetros, tente novamente.\n");
+    //     continue;
+    // }
+    printf("Digita a senha: \n");
+    std::cin >> aux2;
+    // std::cin >> aux2 >> aux3; // scanf("%30s", aux2);
+    // if (!aux3.empty()) {
+    //     printf("Não insira espaços na senha! Tente novamente.\n");
+    //     continue;
+    // }
+    printf("Digite novamente a senha: \n");
+    std::cin >> aux3; // scanf("%30s", aux3);
+
+    if (aux2 != aux3) {
+        printf("Confirmação de senha falhou, repita o processo.\n\n");
+        return false;
+    } 
+    else {
+        // Mandou o cadastro pro servidor... espera resposta.
+        std::string output = "NEWUSR " + aux1 + " " + aux2;
+
+        recebeu_resposta = 0;
+        conexao->envia_mensagem(output);
+
+        std::unique_lock<std::mutex> lck(mtx);
+        mensagens_cv.wait(lck, respostas_para_receber);
+
+        Mensagem msg(mensagens.top());
+        aux3 = msg.conteudo;
+        mensagens.pop(); 
+
+        std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+        std::smatch resultado;
+        std::regex_search(aux3, resultado, rgx);
+        std::string comando = resultado[1];
+        std::string arg1 = resultado[2];
+        std::string arg2 = resultado[3];
+
+        if (arg1 == "010") {
+            // Se o cadastro deu certo :
+            printf("Seja bem vindo! Você está conectado como %s.\n", arg2.c_str());
+            return true;                            
+        }
+        else if (arg1 == "011") {
+            printf("Usuário %s já existe.\n", arg2.c_str());
+            return false;
+        }
+    }
+
+    printf ("Erro inesperado. Tente novamente.\n");
+    return false;
+}
