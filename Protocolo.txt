@@ -2,13 +2,30 @@ Funções do Protocolo :
 
 Cliente envia :						|		Resposta do servidor:
 									|
-LOGIN username password				|		000 usuario :Login aceito; 001 usuario :Senha incorreta; 002 usuario :Usuário não existe; 
-NEWUSR								|		010 usuario :Usuario criado; 011 usuario :Usuário já existe; 
-LOGOUT								|		A definir;
-LIST 								|		A definir;
+LOGIN username password				|		000 <usuario> - Login aceito para usuario
+											001 <usuario> - Senha incorreta para usuario
+											002 <usuario> - Usuário usuario não existe
+------------------------------------------------------------------------------------------											
+NEWUSR								|		010 <usuario> - Usuario usuario criado
+											011 <usuario> - Usuário usuario já existe
+------------------------------------------------------------------------------------------
+LOGOUT								|		020 <usuario> - Logout de usuario feito com sucesso
+------------------------------------------------------------------------------------------
+PREPARE_LIST 						|		030 <num> - Diz que a lista terá num usuários
+------------------------------------------------------------------------------------------
+LIST (precisa ter enviado
+      PREPARE_LIST antes)					031 <usuario> <hora> <estado> - Entrada da lista
+												- usuario é o login
+												- hora é uma string com o horário da última conexão
+												- estado é "Ocioso" ou "Em jogo"
+											032 - Lista não foi preparada
+------------------------------------------------------------------------------------------
 QUIT								| 		A definir;
+------------------------------------------------------------------------------------------
 REQUEST opponent_name  				|		A definir;
+------------------------------------------------------------------------------------------
 ACCEPT opponent_name				| 		A definir;
+------------------------------------------------------------------------------------------
 
 
 

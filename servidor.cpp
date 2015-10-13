@@ -124,6 +124,8 @@ void* client_connection(void* entrada) {
 	char    recvline[MAXLINE + 1];
 	/* Armazena o tamanho da string lida do cliente */
 	ssize_t  n;
+	std::vector<Usuario*> copia_lista_usuarios;
+	bool lista_foi_preparada = false;
 
 	while ((n=conexao->recebe_mensagem(recvline)) > 0) {
 		/*sscanf(recvline, "%d %d %c", &x, &y, &simbolo);
@@ -135,12 +137,12 @@ void* client_connection(void* entrada) {
 
 		printf ("Recvline: %s\n", recvline);
 
-		std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+		std::regex rgx("([A-Z_]*)(\\s+(\\w*))?(\\s+(\\w*))?");
 		std::smatch resultado;
 		std::regex_search(std::string(recvline), resultado, rgx);
 		comando = resultado[1];
-		arg1 = resultado[2];
-		arg2 = resultado[3];
+		arg1 = resultado[3];
+		arg2 = resultado[5];
 		std::string stringaux;
 		/*for(size_t i=0; i<resultado.size(); ++i)
 		{
@@ -149,27 +151,49 @@ void* client_connection(void* entrada) {
 
 		printf ("Comando: %s\nArg1: %s\nArg2: %s\n", comando.c_str(), arg1.c_str(), arg2.c_str());
 
-		// FAZER O LIST
-
 		if (logado)
 		{
-			if (comando == "LIST")
-			{
-				usuario->escreve ("Login\tHora de login\tEstado\n");
-				for (auto usuario : usuarios_tcp)
+			if (comando == "PREPARE_LIST")
+			{	
+				//copia_lista_usuarios = usuarios_tcp;
+				for (auto user : usuarios_tcp)
 				{
-					if (usuario->esta_conectado())
-					{
-						stringaux = usuario->get_login() + "\t" + usuario->get_hora_ultima_conexao() +"\t";
-						usuario->esta_em_jogo() ? stringaux += "Em jogo\n" : stringaux += "Ocioso\n";
-						usuario->escreve(stringaux);
-					}
+					if (user->esta_conectado())
+						copia_lista_usuarios.emplace_back(user);
 				}
+
+				lista_foi_preparada = true;
+				int tam_lista_usuarios = copia_lista_usuarios.size();
+				printf("tam_lista_usuarios = %d\n", tam_lista_usuarios);
+				stringaux = "REPLY 030 " + std::to_string(tam_lista_usuarios);
+				printf("stringaux = %s\n", stringaux.c_str());
+				usuario->escreve(stringaux);
+			}
+			else if (comando == "LIST")
+			{
+				if (lista_foi_preparada)
+				{
+					while (!copia_lista_usuarios.empty()){
+						Usuario *aux = copia_lista_usuarios.back();
+						copia_lista_usuarios.pop_back();
+						if (aux->esta_conectado())
+						{
+							stringaux = "REPLY 031 " + aux->get_login() + " " + aux->get_hora_ultima_conexao() + " ";
+							aux->esta_em_jogo() ? stringaux += "Em jogo\n" : stringaux += "Ocioso\n";
+							usuario->escreve(stringaux);
+						}	
+					}
+
+					lista_foi_preparada = false;
+				}
+				else
+					usuario->escreve("REPLY 032");
 			}
 			else if (comando == "LOGOUT")
 			{
 				logado = false;
-				usuario->escreve ("Logout feito com sucesso\n");
+				usuario->desconecta();
+				usuario->escreve ("REPLY 020 " + usuario->get_login());
 			}
 			else if (comando == "QUIT")
 			{

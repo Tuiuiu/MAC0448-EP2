@@ -60,7 +60,11 @@ void interacao_usuario(Conexao *conexao);
 
 bool efetuar_login (Conexao* conexao);
 
+void efetuar_logout (Conexao* conexao);
+
 bool efetuar_cadastro (Conexao* conexao);
+
+void listar_jogadores(Conexao* conexao);
 
 
 bool respostas_para_receber() { 
@@ -71,32 +75,52 @@ int main(int argc, char **argv) {
     int sockfd;
     struct sockaddr_in servaddr;
     struct  hostent *hptr;
+    char enderecoIPServidor[INET_ADDRSTRLEN];
 
 
 
     if (argc != 4) {
         fprintf(stderr,"Uso: %s <Endereco IP|Nome> <Porta> <TCP|UDP>\n",argv[0]);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     if ((hptr = gethostbyname(argv[1])) == NULL) {  
         fprintf(stderr,"gethostbyname :(\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (hptr->h_addrtype != AF_INET) {
+        fprintf(stderr,"h_addrtype :(\n");
         exit(1);
+    }
+    if ( (inet_ntop(AF_INET, hptr->h_addr_list[0], enderecoIPServidor, sizeof(enderecoIPServidor))) == NULL) {
+        fprintf(stderr,"inet_ntop :(\n");
+        exit (1);
     }
 
     if (string(argv[3]) == "TCP") {
         if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        {
             fprintf(stderr,"socket error :( \n");
+            exit(EXIT_FAILURE);
+        }
            
         bzero(&servaddr, sizeof(servaddr));
         servaddr.sin_family = AF_INET;
         servaddr.sin_port = htons(atoi(argv[2])); 
 
-        if (inet_pton(AF_INET, argv[1], &servaddr.sin_addr) <= 0)
-            fprintf(stderr,"inet_pton error for %s :(\n", argv[1]);
+        int resultado;
+        if ((resultado = inet_pton(AF_INET, enderecoIPServidor, &servaddr.sin_addr)) <= 0)
+        {
+            fprintf(stderr,"inet_pton error %d for %s :(\n", resultado, argv[1]);
+            exit(EXIT_FAILURE);
+        }
            
         if (connect(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0)
+        {
             fprintf(stderr,"connect error :(\n");
+            exit(EXIT_FAILURE);
+        }
 
         Conexao *conexao_tcp = new ConexaoTCP(sockfd);
         {
@@ -121,6 +145,7 @@ void recebe_mensagens_servidor(Conexao *conexao) {
         std::smatch resultado;
         std::regex_search(std::string(recvline), resultado, rgx);
         comando = resultado[1];
+        arg1 = resultado[2];
         
         // Prioridade menor = menos importante = final da fila
         if (comando == "REQUEST") {
@@ -128,15 +153,18 @@ void recebe_mensagens_servidor(Conexao *conexao) {
         } 
         // Prioridade maior = mais importante  = começo da fila
         else if (comando == "REPLY") {
-            mensagens.push(Mensagem(string(recvline), 2));
-            recebeu_resposta = 1;
+            mensagens.push(Mensagem(string(recvline), 1)); 
+            recebeu_resposta++;
             mensagens_cv.notify_one();
-            printf("Recebemos reply : %s\n", recvline);
+            //printf("Recebemos reply: %s\n", recvline);
         }
 
     }
     if (n < 0)
         fprintf(stderr,"read error :(\n");
+
+
+    exit(EXIT_FAILURE);
 }
 
 void interacao_usuario(Conexao *conexao) {
@@ -153,9 +181,9 @@ void interacao_usuario(Conexao *conexao) {
     printf ("Antes de executar qualquer ação, você deve estar logado.\n");
     while (!quer_sair){
         while (!logado && !quer_sair) {
-            printf ("Digite: \n  1 para fazer login\n  2 para criar um novo usuário\n  3 para sair do programa\n");
+            printf ("Digite:\n  1 para fazer login\n  2 para criar um novo usuário\n  3 para sair do programa\n");
             scanf ("%d", &opcao);
-            
+            printf("Opção: %d\n", opcao);
             if (opcao == 1) {
                 logado = efetuar_login(conexao);
             } else if (opcao == 2) {
@@ -166,10 +194,29 @@ void interacao_usuario(Conexao *conexao) {
             else {
                 printf("Comando inválido.\n");
             }
-        
         }
 
-        // while (logado && !quer_sair) {       }
+        while (logado && !quer_sair) {
+            printf ("Digite:\n  1 para listar jogadores conectados\n  2 para novo jogo\n  3 para ver o hall of fame\n  4 para logout\n  5 para sair do programa\n");
+            scanf ("%d", &opcao);
+            
+            if (opcao == 1) {
+                listar_jogadores(conexao);
+            } else if (opcao == 2) {
+                //
+            } else if (opcao == 3) {
+                //
+            } else if (opcao == 4) {
+                efetuar_logout(conexao);
+                logado = false;
+            } else if (opcao == 5) {
+                efetuar_logout(conexao);
+                quer_sair = true; 
+            }
+            else {
+                printf("Comando inválido.\n");
+            }
+        }
     }
     // while (mensagens.empty()) {}
 }
@@ -226,6 +273,40 @@ bool efetuar_login (Conexao* conexao) // devolve true se o login deu certo e fal
 
     printf ("Erro inesperado. Tente novamente.\n");
     return false;
+}
+
+
+void efetuar_logout (Conexao* conexao)
+{    
+    recebeu_resposta = 0;
+    conexao->envia_mensagem("LOGOUT");
+
+    std::unique_lock<std::mutex> lck(mtx);
+    mensagens_cv.wait(lck, respostas_para_receber);
+
+    Mensagem msg(mensagens.top());
+    std::string aux = msg.conteudo;
+    mensagens.pop(); 
+
+    std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+    std::smatch resultado;
+    std::regex_search(aux, resultado, rgx);
+    std::string comando = resultado[1];
+    std::string arg1 = resultado[2];
+    std::string arg2 = resultado[3];
+  
+
+    if (arg1 == "020")
+    {
+        printf("Logout de %s efetuado com sucesso.\n", arg2.c_str());
+        return;
+    }
+    else
+    {
+        mensagens.push(msg);
+        printf ("Erro inesperado.\n");
+        return;
+    }
 }
 
 bool efetuar_cadastro (Conexao* conexao) // devolve true se conseguiu cadastrar corretamente
@@ -288,4 +369,88 @@ bool efetuar_cadastro (Conexao* conexao) // devolve true se conseguiu cadastrar 
 
     printf ("Erro inesperado. Tente novamente.\n");
     return false;
+}
+
+void listar_jogadores(Conexao* conexao)
+{
+    int num_usuarios;
+    recebeu_resposta = 0;
+    conexao->envia_mensagem("PREPARE_LIST");
+
+    { 
+        std::unique_lock<std::mutex> lck(mtx);
+        mensagens_cv.wait(lck, respostas_para_receber);
+
+        Mensagem msg(mensagens.top());
+        std::string aux = msg.conteudo;
+        mensagens.pop();
+
+
+        std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+        std::smatch resultado;
+        std::regex_search(aux, resultado, rgx);
+        std::string comando = resultado[1];
+        std::string arg1 = resultado[2];
+        std::string arg2 = resultado[3];
+
+        if (arg1 == "030") // começo da lista
+        {
+            num_usuarios = atoi(arg2.c_str());
+            printf("num_usuarios = %d\n", num_usuarios);
+        }
+        else
+        {
+            mensagens.push(msg);
+            printf ("Erro inesperado.\n");
+            return;
+        }
+    }
+
+    recebeu_resposta = 0;
+
+    printf ("Login\tHora de login\tEstado\n");
+
+    conexao->envia_mensagem("LIST");
+
+    //printf("Antes do while\n");
+    while (num_usuarios > 0)
+    {
+        //printf("Antes do mutex\n");
+        std::unique_lock<std::mutex> lck(mtx);
+        //printf("Antes de esperar\n");
+        mensagens_cv.wait(lck, respostas_para_receber);
+        //printf("Depois de esperar\n");
+
+        Mensagem msg(mensagens.top());
+        std::string aux = msg.conteudo;
+        mensagens.pop();
+
+        recebeu_resposta--;
+
+        std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)\\s+([0-9:]*)\\s+(\\w*)");
+        std::smatch resultado;
+        std::regex_search(aux, resultado, rgx);
+        std::string comando = resultado[1];
+        std::string arg1 = resultado[2];
+        std::string arg2 = resultado[3];
+        std::string arg3 = resultado[4];
+        std::string arg4 = resultado[5];
+
+        //printf("Aux : %s\n", aux.c_str());
+        //printf("arg1 : %s, arg2 : %s, arg3 : %s, arg4 : %s\n", arg1.c_str(), arg2.c_str(), arg3.c_str(), arg4.c_str());
+
+        if (arg1 == "031")
+        {
+            std::string stringaux = arg2 + "\t" + arg3 + "\t" + arg4 + "\n";
+            printf("%s", stringaux.c_str());
+        }
+        else
+        {
+            mensagens.push(msg);
+            printf("Erro inesperadoALDJWLFA\n");
+            return;
+        }
+
+        num_usuarios--;
+    }
 }
