@@ -4,8 +4,7 @@ void Usuario::escreve(std::string mensagem) {
 	conexao->envia_mensagem(mensagem);
 }
 
-void Usuario::atualiza_conexao(Conexao *novaConexao) {
-	free (conexao);
+void Usuario::atualiza_conexao(ConexaoPtr novaConexao) {
 	conexao = novaConexao;
 	set_hora_ultima_conexao();
 }
