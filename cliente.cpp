@@ -54,17 +54,17 @@ std::mutex mtx;
 std::priority_queue<Mensagem, std::vector<Mensagem>, ComparaMensagem> mensagens;
 
 
-void recebe_mensagens_servidor(Conexao *conexao);
+void recebe_mensagens_servidor(ConexaoPtr conexao);
 
-void interacao_usuario(Conexao *conexao);
+void interacao_usuario(ConexaoPtr conexao);
 
-bool efetuar_login (Conexao* conexao);
+bool efetuar_login (ConexaoPtr conexao);
 
-void efetuar_logout (Conexao* conexao);
+void efetuar_logout (ConexaoPtr conexao);
 
-bool efetuar_cadastro (Conexao* conexao);
+bool efetuar_cadastro (ConexaoPtr conexao);
 
-void listar_jogadores(Conexao* conexao);
+void listar_jogadores(ConexaoPtr conexao);
 
 
 bool respostas_para_receber() { 
@@ -122,7 +122,8 @@ int main(int argc, char **argv) {
             exit(EXIT_FAILURE);
         }
 
-        Conexao *conexao_tcp = new ConexaoTCP(sockfd);
+        ConexaoPtr conexao_tcp = std::make_shared<ConexaoTCP>(sockfd);
+
         {
             std::thread thread_recebe_mensagens_servidor_tcp (recebe_mensagens_servidor, conexao_tcp);      
             std::thread thread_interacao_usuario_tcp (interacao_usuario, conexao_tcp);
@@ -134,7 +135,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void recebe_mensagens_servidor(Conexao *conexao) {
+void recebe_mensagens_servidor(ConexaoPtr conexao) {
     int  n;
     char recvline[MAXLINE + 1];
     std::string comando, arg1, arg2;
@@ -167,61 +168,84 @@ void recebe_mensagens_servidor(Conexao *conexao) {
     exit(EXIT_FAILURE);
 }
 
-void interacao_usuario(Conexao *conexao) {
+void interacao_usuario(ConexaoPtr conexao) {
 
-    int opcao;
+    int opcao = 0;
     bool logado = false;
     //bool cadastrando = false;
     bool quer_sair = false;
     std::string aux1, aux2, aux3, output;
     // char str1[31], str2[31], str3[31];
+
     printf ("Olá senhor usuário, gostaria de jogar um jogo? :v\n MUAHAHA \n =) \n");
-
-
-    printf ("Antes de executar qualquer ação, você deve estar logado.\n");
     while (!quer_sair){
         while (!logado && !quer_sair) {
-            printf ("Digite:\n  1 para fazer login\n  2 para criar um novo usuário\n  3 para sair do programa\n");
-            scanf ("%d", &opcao);
+
+            bool error = false;
+            do {
+                // printf("\033[2J\033[;H");
+                printf ("Antes de executar qualquer ação, você deve estar logado.\n");
+                printf ("Digite:\n  1 para fazer login\n  2 para criar um novo usuário\n  3 para sair do programa\n");
+                std::cin >> opcao;
+                error = std::cin.fail();
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            } while (error);
+            
             printf("Opção: %d\n", opcao);
-            if (opcao == 1) {
-                logado = efetuar_login(conexao);
-            } else if (opcao == 2) {
-                logado = efetuar_cadastro(conexao);
-            } else if (opcao == 3) {
-                quer_sair = true;
-            } 
-            else {
-                printf("Comando inválido.\n");
+            switch (opcao) {
+                case 1:
+                    logado = efetuar_login(conexao);
+                    break;
+                case 2:
+                    logado = efetuar_cadastro(conexao);
+                    break;
+                case 3:
+                    quer_sair = true;
+                    break;
+                default:
+                    printf("Comando inválido.\n");
             }
         }
 
         while (logado && !quer_sair) {
-            printf ("Digite:\n  1 para listar jogadores conectados\n  2 para novo jogo\n  3 para ver o hall of fame\n  4 para logout\n  5 para sair do programa\n");
-            scanf ("%d", &opcao);
             
-            if (opcao == 1) {
-                listar_jogadores(conexao);
-            } else if (opcao == 2) {
-                //
-            } else if (opcao == 3) {
-                //
-            } else if (opcao == 4) {
-                efetuar_logout(conexao);
-                logado = false;
-            } else if (opcao == 5) {
-                efetuar_logout(conexao);
-                quer_sair = true; 
-            }
-            else {
-                printf("Comando inválido.\n");
+            bool error;
+            do {
+                printf ("Digite:\n  1 para listar jogadores conectados\n  2 para novo jogo\n  3 para ver o hall of fame\n  4 para logout\n  5 para sair do programa\n");
+                std::cin >> opcao;
+                error = std::cin.fail();
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            } while (error);
+
+            switch (opcao) {
+                case 1:
+                    listar_jogadores(conexao);
+                    break; 
+                case 2: 
+                    //
+                    break;
+                case 3: 
+                    //
+                    break;
+                case 4: 
+                    efetuar_logout(conexao);
+                    logado = false;
+                    break;
+                case 5: 
+                    efetuar_logout(conexao);
+                    quer_sair = true; 
+                    break;
+                default:
+                    printf("Comando inválido.\n");
             }
         }
     }
     // while (mensagens.empty()) {}
 }
 
-bool efetuar_login (Conexao* conexao) // devolve true se o login deu certo e false caso contrário
+bool efetuar_login (ConexaoPtr conexao) // devolve true se o login deu certo e false caso contrário
 {
     std::string aux1, aux2, aux3;
 
@@ -276,7 +300,7 @@ bool efetuar_login (Conexao* conexao) // devolve true se o login deu certo e fal
 }
 
 
-void efetuar_logout (Conexao* conexao)
+void efetuar_logout (ConexaoPtr conexao)
 {    
     recebeu_resposta = 0;
     conexao->envia_mensagem("LOGOUT");
@@ -309,7 +333,7 @@ void efetuar_logout (Conexao* conexao)
     }
 }
 
-bool efetuar_cadastro (Conexao* conexao) // devolve true se conseguiu cadastrar corretamente
+bool efetuar_cadastro (ConexaoPtr conexao) // devolve true se conseguiu cadastrar corretamente
 {
     std::string aux1 = "";
     std::string aux2 = "";
@@ -371,7 +395,7 @@ bool efetuar_cadastro (Conexao* conexao) // devolve true se conseguiu cadastrar 
     return false;
 }
 
-void listar_jogadores(Conexao* conexao)
+void listar_jogadores(ConexaoPtr conexao)
 {
     int num_usuarios;
     recebeu_resposta = 0;

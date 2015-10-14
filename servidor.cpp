@@ -7,6 +7,8 @@
 #include <cstring>
 #include <string>
 #include <regex>
+#include <thread>
+#include <memory>
 
 
 /* Linux headers */
@@ -20,8 +22,6 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-/* POSIX Thread headers */
-#include <pthread.h>
 
 #include "Partida.hpp"
 #include "Usuario.hpp"
@@ -32,24 +32,31 @@
 #define MAX_CONNECTIONS 100
 #define MAXLINE 4096
 
-// UHUL
-void* client_connection(void*);
+void client_connection(ConexaoPtr conexao);
 
-std::vector<Usuario*> usuarios_tcp;
+std::vector<UsuarioPtr> usuarios_tcp;
+
+void comando_prepare_list(std::vector<UsuarioPtr> &copia_lista_usuarios, UsuarioPtr usuario);
+
+void comando_list(std::vector<UsuarioPtr> &copia_lista_usuarios, UsuarioPtr usuario);
+
+void comando_logout(UsuarioPtr usuario);
+
+UsuarioPtr comando_login(ConexaoPtr conexao, std::string login, std::string senha);
+
+UsuarioPtr comando_newusr(ConexaoPtr conexao, std::string login, std::string senha);
 
 int main (int argc, char **argv) {
 
 	int listenfd, connfd;
-	int number_of_connections = 0;
 	/* Informações sobre o socket (endereço e porta) ficam nesta struct */
 	struct sockaddr_in servaddr;
 
 	char string[100];
 
-	pthread_t aux;
-	std::vector<pthread_t> TCPThreads;
+	std::vector<std::thread> TCPThreads;
 
-	//Conexao *conexaoaux;
+	//ConexaoPtr conexaoaux;
 
 
 	if (argc != 2) {
@@ -84,48 +91,40 @@ int main (int argc, char **argv) {
 		}
 
 
-		Conexao *conexaoaux = new ConexaoTCP(connfd);
+		ConexaoPtr conexaoaux = std::make_shared<ConexaoTCP>(connfd);
 
-		/* Usuario* useraux(conexaoaux);
+		/* UsuarioPtr useraux(conexaoaux);
 		
 		usuarios_tcp.emplace_back(useraux);*/
-
-		if (pthread_create(&aux, NULL, client_connection, (void *) conexaoaux))
-		{
-			printf ("Erro na criação da thread %d.\n", number_of_connections);
-			exit (EXIT_FAILURE);
-		}
 		 
-		TCPThreads.emplace_back(aux);
+		TCPThreads.emplace_back(client_connection, conexaoaux);
 
 		sprintf(string, "Conexão estabelecida\n");
-		conexaoaux->envia_mensagem(string); // write(connfd, string, strlen(string));  
-		// break; // TEM QUE TIRAR ISSO DAQUI DEPOIS!!!
+		conexaoaux->envia_mensagem(string); // write(connfd, string, strlen(string));
 	}
 
 	return 0;	
 }
 
-void* client_connection(void* entrada) {
+void client_connection(ConexaoPtr conexao) {
 	// int* aux = (int*) entrada;
 	// int connfd = *(aux);
-	Conexao *conexao = (Conexao*) entrada;
-	//Usuario* usuario = (Usuario*) entrada;
+	//UsuarioPtr usuario = (UsuarioPtr) entrada;
 	//int x, y;
 	//char simbolo;
-	bool loginExiste = false;
 	bool logado = false;
+	bool lista_foi_preparada = false;
+	std::vector<UsuarioPtr> copia_lista_usuarios;
+	
 	std::string comando, arg1, arg2;
 
-	Usuario *usuario;
+	UsuarioPtr usuario;
 	Partida partida;
 
 	/* Armazena linhas recebidas do cliente */
 	char    recvline[MAXLINE + 1];
 	/* Armazena o tamanho da string lida do cliente */
 	ssize_t  n;
-	std::vector<Usuario*> copia_lista_usuarios;
-	bool lista_foi_preparada = false;
 
 	while ((n=conexao->recebe_mensagem(recvline)) > 0) {
 		/*sscanf(recvline, "%d %d %c", &x, &y, &simbolo);
@@ -155,120 +154,49 @@ void* client_connection(void* entrada) {
 		{
 			if (comando == "PREPARE_LIST")
 			{	
-				//copia_lista_usuarios = usuarios_tcp;
-				for (auto user : usuarios_tcp)
-				{
-					if (user->esta_conectado())
-						copia_lista_usuarios.emplace_back(user);
-				}
-
 				lista_foi_preparada = true;
-				int tam_lista_usuarios = copia_lista_usuarios.size();
-				printf("tam_lista_usuarios = %d\n", tam_lista_usuarios);
-				stringaux = "REPLY 030 " + std::to_string(tam_lista_usuarios);
-				printf("stringaux = %s\n", stringaux.c_str());
-				usuario->escreve(stringaux);
+				comando_prepare_list(copia_lista_usuarios, usuario);
 			}
 			else if (comando == "LIST")
 			{
-				if (lista_foi_preparada)
-				{
-					while (!copia_lista_usuarios.empty()){
-						Usuario *aux = copia_lista_usuarios.back();
-						copia_lista_usuarios.pop_back();
-						if (aux->esta_conectado())
-						{
-							stringaux = "REPLY 031 " + aux->get_login() + " " + aux->get_hora_ultima_conexao() + " ";
-							aux->esta_em_jogo() ? stringaux += "Em jogo\n" : stringaux += "Ocioso\n";
-							usuario->escreve(stringaux);
-						}	
-					}
-
+				std::cout << "Ta oq essa porra? " << lista_foi_preparada << std::endl;
+				if(lista_foi_preparada) {
+					comando_list(copia_lista_usuarios, usuario);
 					lista_foi_preparada = false;
 				}
-				else
+				else 
 					usuario->escreve("REPLY 032");
 			}
 			else if (comando == "LOGOUT")
 			{
 				logado = false;
-				usuario->desconecta();
-				usuario->escreve ("REPLY 020 " + usuario->get_login());
+				comando_logout(usuario);
 			}
 			else if (comando == "QUIT")
 			{
-				pthread_exit (NULL);
+				break;
 			}
 		}
 		else
 		{
 			if (comando == "LOGIN")
 			{
-				loginExiste = false;
-				if (!arg1.empty() && !arg2.empty()) {
-					for (auto user : usuarios_tcp) {
-						if (user->get_login() == arg1) {
-							if (user->confere_senha(arg2)) {
-								user->atualiza_conexao(conexao);
-								usuario = user;
-								loginExiste = true;
-								logado = true;
-								usuario->conecta();
-								//stringaux = "Conectado como \'";
-								//stringaux += arg1;
-								//stringaux += "\'.\n";
-								stringaux = "REPLY 000 ";
-								stringaux += arg1;
-								conexao->envia_mensagem(stringaux);
-								break;
-							}
-							else {
-								stringaux = "REPLY 001 ";
-								stringaux += arg1;
-								conexao->envia_mensagem(stringaux);
-								loginExiste = true;
-								break;
-							}
-						}
-					}
-					if (loginExiste == false) {
-						//stringaux = "Login \'";
-						//stringaux += arg1; 
-						//stringaux += "\' não existente\n";
-						stringaux = "REPLY 002 ";
-						stringaux += arg1;
-						conexao->envia_mensagem(stringaux);
-					}
+				usuario = comando_login(conexao, arg1, arg2);
+				if (usuario == nullptr) {
+					logado = false;
+				}
+				else { 
+					logado = true; 
 				}
 			}
 			else if (comando == "NEWUSR")
 			{
-				if (!arg1.empty() && !arg2.empty()) {
-					bool usuario_ja_existe = false;
-
-					for (auto useraux : usuarios_tcp)
-					{
-						if (useraux->get_login() == arg1)
-						{
-							usuario_ja_existe = true;
-							break;
-						}
-					}
-
-					if (usuario_ja_existe)
-					{
-						stringaux = "REPLY 011 " + arg1;
-						conexao->envia_mensagem(stringaux);
-					}
-					else
-					{
-						usuario =  new Usuario(conexao, arg1, arg2);
-						usuarios_tcp.emplace_back(usuario);
-						logado = true;
-						stringaux = "REPLY 010 ";
-						stringaux += arg1;
-						conexao->envia_mensagem(stringaux);
-					}
+				usuario = comando_newusr(conexao, arg1, arg2);
+				if (usuario == nullptr) {
+					logado = false;
+				}
+				else { 
+					logado = true; 
 				}
 			}
 			else 
@@ -281,9 +209,117 @@ void* client_connection(void* entrada) {
 				conexao->envia_mensagem(stringaux);
 			}
 		}
-
 		strcpy (recvline, "");
 	}	
-
-	pthread_exit(NULL);
 }
+
+void comando_prepare_list(std::vector<UsuarioPtr> &copia_lista_usuarios, UsuarioPtr usuario) {
+	//copia_lista_usuarios = usuarios_tcp;
+	for (auto user : usuarios_tcp)
+	{
+		if (user->esta_conectado())
+			copia_lista_usuarios.emplace_back(user);
+	}
+
+	int tam_lista_usuarios = copia_lista_usuarios.size();
+	printf("tam_lista_usuarios = %d\n", tam_lista_usuarios);
+	std::string stringaux = "REPLY 030 " + std::to_string(tam_lista_usuarios);
+	printf("stringaux = %s\n", stringaux.c_str());
+	usuario->escreve(stringaux);
+}
+
+void comando_list(std::vector<UsuarioPtr> &copia_lista_usuarios, UsuarioPtr usuario) {
+	for (auto bla : copia_lista_usuarios) {
+		printf("\n\n\n\n AEHOOOO %s \n\n", bla->get_login().c_str());
+	}
+	while (!copia_lista_usuarios.empty()){
+		UsuarioPtr aux = copia_lista_usuarios.back();
+		copia_lista_usuarios.pop_back();
+		if (aux->esta_conectado())
+		{
+			std::string stringaux = "REPLY 031 " + aux->get_login() + " " + aux->get_hora_ultima_conexao() + " ";
+			aux->esta_em_jogo() ? stringaux += "Em jogo\n" : stringaux += "Ocioso\n";
+			usuario->escreve(stringaux);
+		}	
+	}
+}
+
+void comando_logout(UsuarioPtr usuario) {
+	usuario->desconecta();
+	usuario->escreve ("REPLY 020 " + usuario->get_login());
+}
+
+UsuarioPtr comando_login(ConexaoPtr conexao, std::string login, std::string senha) {
+	bool loginExiste = false;
+	if (!login.empty() && !senha.empty()) {
+		for (auto user : usuarios_tcp) {
+			if (user->get_login() == login) {
+				if (user->confere_senha(senha)) {
+					user->atualiza_conexao(conexao);
+					// usuario = user;
+					loginExiste = true;
+					// logado = true;
+					user->conecta();
+					//stringaux = "Conectado como \'";
+					//stringaux += login;
+					//stringaux += "\'.\n";
+					std::string stringaux = "REPLY 000 ";
+					stringaux += login;
+					conexao->envia_mensagem(stringaux);
+					return user;
+				}
+				else {
+					std::string stringaux = "REPLY 001 ";
+					stringaux += login;
+					conexao->envia_mensagem(stringaux);
+					loginExiste = true;
+					return nullptr;
+				}
+			}
+		}
+		if (loginExiste == false) {
+			//stringaux = "Login \'";
+			//stringaux += login; 
+			//stringaux += "\' não existente\n";
+			std::string stringaux = "REPLY 002 ";
+			stringaux += login;
+			conexao->envia_mensagem(stringaux);
+			return nullptr;
+		}
+	}
+	return nullptr;
+}
+
+UsuarioPtr comando_newusr(ConexaoPtr conexao, std::string login, std::string senha) {
+	if (!login.empty() && !senha.empty()) {
+		bool usuario_ja_existe = false;
+
+		for (auto useraux : usuarios_tcp)
+		{
+			if (useraux->get_login() == login)
+			{
+				usuario_ja_existe = true;
+				break;
+			}
+		}
+
+		if (usuario_ja_existe)
+		{
+			std::string stringaux = "REPLY 011 " + login;
+			conexao->envia_mensagem(stringaux);
+			return nullptr;
+		}
+		else
+		{
+			UsuarioPtr usuario = std::make_shared<Usuario>(conexao, login, senha);
+			usuarios_tcp.emplace_back(usuario);
+			// logado = true;
+			std::string stringaux = "REPLY 010 ";
+			stringaux += login;
+			conexao->envia_mensagem(stringaux);
+			return usuario;
+		}
+	}
+	return nullptr;
+}
+
