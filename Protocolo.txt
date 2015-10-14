@@ -20,8 +20,6 @@ LIST (precisa ter enviado
 												- estado é "Ocioso" ou "Em jogo"
 											032 - Lista não foi preparada
 ------------------------------------------------------------------------------------------
-QUIT								| 		A definir;
-------------------------------------------------------------------------------------------
 REQUEST opponent_name  				|		A definir;
 ------------------------------------------------------------------------------------------
 ACCEPT opponent_name				| 		A definir;
@@ -34,7 +32,43 @@ LIST   					 - lista os usuários da mesma conexão que o usuário atual
 LOGIN  username password - conecta o usuário com login username e senha password
 LOGOUT                   - desconecta o usuário do servidor;
 NEWUSR username password - cria novo usuario com login username e senha password
-QUIT 					 - encerra a execução do programa no cliente
 REQUEST					 - envia  um convite para iniciar um jogo
 ACCEPT					 - aceita um convite para iniciar um jogo
 
+
+
+
+UsuarioA                  Servidor                  UsuarioB
+    |   ------------------>   |                         |                          
+    |    REQUEST UsuarioB     |                         |                     
+    |                         |  ------------------->   |                          
+    |                         |   REQUEST UsuarioA      |    R = 'S' ou 'N'                      
+    |                         |  <-------------------   |                          
+    |                         |   ANSWER R UsuarioA     |                          
+    |  <------------------    |                         |                          
+    |   ANSWER R UsuarioB     |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |
+
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+
+UsuarioA                  Servidor                  UsuarioB
+    |   ------------------>   |                         |                          
+    |    REQUEST UsuarioB     |                         |                     
+    |                         |  ------------------->   |                          
+    |                         |   REQUEST UsuarioA      |                          
+    |                         |  <-------------------   |                          
+    |                         |   RECEIVED UsuarioA     |                          
+    |  <------------------    |  ------------------->   |                          
+    |   REPLY 040 UsuarioB    |   REPLY                 |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
