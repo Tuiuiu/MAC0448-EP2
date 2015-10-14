@@ -1,6 +1,7 @@
 #ifndef _CONEXAO_HPP
 #define _CONEXAO_HPP
 
+#include <memory>
 #include <string>
 
 using std::string;
@@ -14,13 +15,15 @@ class Conexao {
     virtual TipoConexao tipo_conexao() = 0;
 };
 
+using ConexaoPtr = std::shared_ptr<Conexao>;
+
 class ConexaoTCP : public Conexao {
   public:
     ConexaoTCP(int connfd) : connfd_(connfd) {}
     ~ConexaoTCP() {}
-    void envia_mensagem(string mensagem);
-    int recebe_mensagem(char* recvline);
-    TipoConexao tipo_conexao();
+    void envia_mensagem(string mensagem) override;
+    int recebe_mensagem(char* recvline) override;
+    TipoConexao tipo_conexao() override;
   private:
     int connfd_;
 };
