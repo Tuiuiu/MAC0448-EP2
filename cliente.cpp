@@ -29,6 +29,7 @@
 #include <iostream>
 #include <condition_variable>
 #include <mutex>
+#include <atomic>
 
 #include "Conexao.hpp"
 
@@ -47,11 +48,12 @@ struct ComparaMensagem {
     }
 };
 
-int recebeu_resposta = 0;
+std::atomic<int> recebeu_resposta(0);
 std::condition_variable mensagens_cv;
 std::mutex mtx;
 
 std::priority_queue<Mensagem, std::vector<Mensagem>, ComparaMensagem> mensagens;
+std::vector<std::string> convites;
 
 
 void recebe_mensagens_servidor(ConexaoPtr conexao);
@@ -65,6 +67,10 @@ void efetuar_logout (ConexaoPtr conexao);
 bool efetuar_cadastro (ConexaoPtr conexao);
 
 void listar_jogadores(ConexaoPtr conexao);
+
+void enviar_convite(ConexaoPtr conexao);
+
+void ver_convites(ConexaoPtr conexao);
 
 
 bool respostas_para_receber() { 
@@ -135,31 +141,55 @@ int main(int argc, char **argv) {
     return 0;
 }
 
+
+std::vector<std::string> separa_string(std::string const &string) // separa uma string com \n's em várias (uma por linha) 
+{
+    std::vector<std::string> resultado;
+    std::istringstream iss(string);
+    std::string token;
+
+    while (std::getline(iss, token, '\n'))
+        resultado.push_back(std::move(token));
+
+    return resultado;
+}
+
 void recebe_mensagens_servidor(ConexaoPtr conexao) {
     int  n;
-    char recvline[MAXLINE + 1];
+    char mensagem_recebida[MAXLINE + 1];
     std::string comando, arg1, arg2;
 
-    while ((n = conexao->recebe_mensagem(recvline)) > 0) {
-        recvline[n] = 0;
-        std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
-        std::smatch resultado;
-        std::regex_search(std::string(recvline), resultado, rgx);
-        comando = resultado[1];
-        arg1 = resultado[2];
-        
-        // Prioridade menor = menos importante = final da fila
-        if (comando == "REQUEST") {
-            mensagens.push(Mensagem(string(recvline), 0));
-        } 
-        // Prioridade maior = mais importante  = começo da fila
-        else if (comando == "REPLY") {
-            mensagens.push(Mensagem(string(recvline), 1)); 
+    while ((n = conexao->recebe_mensagem(mensagem_recebida)) > 0) {
+        mensagem_recebida[n] = 0;
+
+        for (auto recvline : separa_string(mensagem_recebida))
+        {
+            std::regex rgx("([A-Z]*)\\s+(\\w*)(\\s+(\\w*))?");
+            std::smatch resultado;
+            std::regex_search(std::string(recvline), resultado, rgx);
+            comando = resultado[1];
+            arg1 = resultado[2];
+
+            printf("Chegou a mensagem %s (comando = %s, arg1 = %s)\n", recvline.c_str(), comando.c_str(), arg1.c_str());
+            
+            // Prioridade maior = mais importante  = começo da fila
+            // Prioridade menor = menos importante = final da fila
+            int prioridade = 0;
+
+            if (comando == "REPLY")
+                prioridade = 3;
+            else if (comando == "ANSWER") // ANSWER precisa ter mais prioridade do que o START
+                prioridade = 2;
+            else if (comando == "REQUEST")
+                printf ("Novo convite de %s recebido. Responda ao convite no menu principal.\n", arg1.c_str()); // prioridade continua 0
+            else // START etc.
+                prioridade = 1; 
+
+            mensagens.push(Mensagem(recvline, prioridade));            
+
             recebeu_resposta++;
             mensagens_cv.notify_one();
-            //printf("Recebemos reply: %s\n", recvline);
         }
-
     }
     if (n < 0)
         fprintf(stderr,"read error :(\n");
@@ -190,9 +220,10 @@ void interacao_usuario(ConexaoPtr conexao) {
                 error = std::cin.fail();
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                printf("\033[2J\033[;H"); // clear
             } while (error);
             
-            printf("Opção: %d\n", opcao);
+            //printf("Opção: %d\n", opcao);
             switch (opcao) {
                 case 1:
                     logado = efetuar_login(conexao);
@@ -209,14 +240,16 @@ void interacao_usuario(ConexaoPtr conexao) {
         }
 
         while (logado && !quer_sair) {
-            
             bool error;
+            //printf("\033[2J\033[;H"); // clear
             do {
-                printf ("Digite:\n  1 para listar jogadores conectados\n  2 para novo jogo\n  3 para ver o hall of fame\n  4 para logout\n  5 para sair do programa\n");
+                printf ("\n=============== MENU PRINCIPAL ===============\n");
+                printf ("Digite:\n  1 para listar jogadores conectados\n  2 para enviar convite de jogo\n  3 para ver os convites recebidos\n  4 para ver o hall of fame\n  5 para logout\n  6 para sair do programa\n");
                 std::cin >> opcao;
                 error = std::cin.fail();
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                printf("\033[2J\033[;H"); // clear
             } while (error);
 
             switch (opcao) {
@@ -224,16 +257,19 @@ void interacao_usuario(ConexaoPtr conexao) {
                     listar_jogadores(conexao);
                     break; 
                 case 2: 
-                    //
+                    enviar_convite(conexao);
                     break;
                 case 3: 
+                    ver_convites(conexao);
+                    break;
+                case 4:
                     //
                     break;
-                case 4: 
+                case 5: 
                     efetuar_logout(conexao);
                     logado = false;
                     break;
-                case 5: 
+                case 6: 
                     efetuar_logout(conexao);
                     quer_sair = true; 
                     break;
@@ -269,6 +305,7 @@ bool efetuar_login (ConexaoPtr conexao) // devolve true se o login deu certo e f
         Mensagem msg(mensagens.top());
         aux3 = msg.conteudo;
         mensagens.pop(); 
+        recebeu_resposta--;
 
         std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
         std::smatch resultado;
@@ -311,6 +348,7 @@ void efetuar_logout (ConexaoPtr conexao)
     Mensagem msg(mensagens.top());
     std::string aux = msg.conteudo;
     mensagens.pop(); 
+    recebeu_resposta--;
 
     std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
     std::smatch resultado;
@@ -371,7 +409,8 @@ bool efetuar_cadastro (ConexaoPtr conexao) // devolve true se conseguiu cadastra
 
         Mensagem msg(mensagens.top());
         aux3 = msg.conteudo;
-        mensagens.pop(); 
+        mensagens.pop();
+        recebeu_resposta--;
 
         std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
         std::smatch resultado;
@@ -408,7 +447,7 @@ void listar_jogadores(ConexaoPtr conexao)
         Mensagem msg(mensagens.top());
         std::string aux = msg.conteudo;
         mensagens.pop();
-
+        recebeu_resposta--;
 
         std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
         std::smatch resultado;
@@ -448,7 +487,6 @@ void listar_jogadores(ConexaoPtr conexao)
         Mensagem msg(mensagens.top());
         std::string aux = msg.conteudo;
         mensagens.pop();
-
         recebeu_resposta--;
 
         std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)\\s+([0-9:]*)\\s+(\\w*)");
@@ -471,10 +509,190 @@ void listar_jogadores(ConexaoPtr conexao)
         else
         {
             mensagens.push(msg);
-            printf("Erro inesperadoALDJWLFA\n");
+            printf("Erro inesperado\n");
             return;
         }
 
         num_usuarios--;
     }
+}
+
+void enviar_convite(ConexaoPtr conexao)
+{
+    std::string oponente;
+
+    printf("Com qual usuário você deseja jogar?\n");
+    std::cin >> oponente;
+    conexao->envia_mensagem("REQUEST " + oponente);
+    printf("Enviando convite para %s...\n", oponente.c_str());
+
+    // espera resposta ao convite
+
+    recebeu_resposta = 0;
+    std::unique_lock<std::mutex> lck(mtx);
+    //printf("oi1, recebeu = %d\n", recebeu_resposta);
+    mensagens_cv.wait(lck, respostas_para_receber);
+    //printf("oi2, recebeu = %d\n", recebeu_resposta);
+
+    printf ("mensagens.size pré-top: %d\n", (int) mensagens.size());
+    Mensagem msg(mensagens.top());
+    printf("oi3\n");
+
+    std::string aux = msg.conteudo;
+    printf ("mensagens.size: %d\n", (int) mensagens.size());
+    std::cout << "oi4, aux: " << aux << std::endl;
+    mensagens.pop();
+
+    printf("oi5\n");
+    recebeu_resposta--;
+
+    std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+    std::smatch resultado;
+    std::regex_search(aux, resultado, rgx);
+    std::string comando = resultado[1];
+    std::string arg1 = resultado[2];
+    std::string arg2 = resultado[3];
+
+    if (comando == "ANSWER" && arg2 == oponente)
+    {
+        if (arg1 == "S")
+        {
+            printf("Convite aceito. Aguardando início de partida...");
+
+            // ROLÊS
+
+        }
+        else if (arg1 == "N")
+        {
+            printf("Convite recusado.\n");
+        }
+        else
+        {
+            mensagens.push(msg);
+            printf("Erro inesperado\n");
+            return;
+        }
+
+    }
+    else if (comando == "REPLY")
+    {
+        if (arg1 == "041")
+        {
+            printf("O usuário %s não existe.\n", arg2.c_str());
+        }
+        else if (arg1 == "042")
+        {
+            printf("O usuário %s não está conectado.\n", arg2.c_str());
+        }
+        else if (arg1 == "043")
+        {
+            printf("O usuário %s já está em jogo.\n", arg2.c_str());
+        }
+        else if (arg1 == "044")
+        {
+            printf("Não é possível jogar com você mesmo.\n");
+        }
+        else
+        {
+            mensagens.push(msg);
+            printf("Erro inesperado\n");
+            return;
+        }
+    }
+    else
+    {
+        mensagens.push(msg);
+        printf("Erro inesperado\n");
+        return;
+    }
+}
+
+void ver_convites(ConexaoPtr conexao)
+{
+    std::queue<Mensagem> mensagens_nao_requests;
+
+    while (!mensagens.empty())
+    {
+        std::string conteudo = mensagens.top().conteudo;
+        if (conteudo.find("REQUEST") == 0) {
+            convites.emplace_back(conteudo.substr(8));
+        }
+        else {
+            mensagens_nao_requests.push(mensagens.top());
+        }
+        mensagens.pop();
+        recebeu_resposta--;
+    }
+
+    if (convites.empty())
+        printf("Você não tem convites pendentes.\n");
+    else
+    {
+        bool quer_sair = false;
+
+        while (!quer_sair)
+        {
+            unsigned int opcao1;
+            bool error;
+            unsigned int num_convites = convites.size();
+            do
+            {
+                printf("Você tem convites dos seguintes usuários:\n");
+                for (unsigned int i = 0; i < num_convites; i++)
+                    printf("%d) %s\n", i, convites[i].c_str());
+                printf("Para responder a um convite, digite o número do usuário que te convidou.\nOu digite %d para voltar ao menu anterior.\n", num_convites);
+
+                std::cin >> opcao1;
+                error = std::cin.fail();
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            } while (error);
+
+            if (opcao1 == num_convites)
+                quer_sair = true;
+            else if (opcao1 >= 0 && opcao1 < num_convites)
+            {  
+                int opcao2;
+                do
+                {
+                    printf("Digite 1 para aceitar ou 2 para recusar o convite de %s, ou 3 para cancelar a resposta\n", convites[opcao1].c_str());
+
+                    std::cin >> opcao2;
+                    error = std::cin.fail();
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                } while (error);
+
+                std::string oponente = convites[opcao1];
+
+                switch (opcao2)
+                {    
+                    case 1:
+                        convites.erase(convites.begin() + opcao1);
+                        num_convites--;
+                        printf("Convite aceito. Aguardando início de partida...\n");
+                        conexao->envia_mensagem("ANSWER S " + oponente);
+                        quer_sair = true;
+                        // espera início da partida
+                        break;
+                    case 2:
+                        convites.erase(convites.begin() + opcao1);
+                        num_convites--;
+                        printf ("Convite recusado\n");
+                        conexao->envia_mensagem("ANSWER N " + oponente);
+                        quer_sair = true;
+                        break;
+                    case 3:
+                        break;
+                    default:
+                        printf("Comando inválido\n");
+                        break;
+                }
+            }
+        }
+    }
+    while (!mensagens_nao_requests.empty()) {
+        mensagens.push(mensagens_nao_requests.front());
+        mensagens_nao_requests.pop();
+    } 
 }

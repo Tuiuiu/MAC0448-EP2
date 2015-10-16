@@ -46,13 +46,17 @@ UsuarioPtr comando_login(ConexaoPtr conexao, std::string login, std::string senh
 
 UsuarioPtr comando_newusr(ConexaoPtr conexao, std::string login, std::string senha);
 
+void comando_request(UsuarioPtr usuario, std::string nome_oponente);
+
+void comando_answer(UsuarioPtr usuario, std::string resposta, std::string oponente);
+
 int main (int argc, char **argv) {
 
 	int listenfd, connfd;
 	/* Informações sobre o socket (endereço e porta) ficam nesta struct */
 	struct sockaddr_in servaddr;
 
-	char string[100];
+	//char string[100];
 
 	std::vector<std::thread> TCPThreads;
 
@@ -84,6 +88,9 @@ int main (int argc, char **argv) {
 		exit(4);
 	}
 
+	printf ("[Servidor no ar. Aguardando conexoes na porta %s]\n",argv[1]);
+	printf ("[Para finalizar, pressione CTRL+c ou rode um kill ou killall]\n");
+
 	while (true) {
 		if ((connfd = accept(listenfd, (struct sockaddr *) NULL, NULL)) == -1 ) {
 			perror("accept :(\n");
@@ -99,8 +106,8 @@ int main (int argc, char **argv) {
 		 
 		TCPThreads.emplace_back(client_connection, conexaoaux);
 
-		sprintf(string, "Conexão estabelecida\n");
-		conexaoaux->envia_mensagem(string); // write(connfd, string, strlen(string));
+		//sprintf(string, "Conexão estabelecida\n");
+		//conexaoaux->envia_mensagem(string); // write(connfd, string, strlen(string));
 	}
 
 	return 0;	
@@ -119,7 +126,7 @@ void client_connection(ConexaoPtr conexao) {
 	std::string comando, arg1, arg2;
 
 	UsuarioPtr usuario;
-	Partida partida;
+	PartidaPtr partida;
 
 	/* Armazena linhas recebidas do cliente */
 	char    recvline[MAXLINE + 1];
@@ -159,7 +166,6 @@ void client_connection(ConexaoPtr conexao) {
 			}
 			else if (comando == "LIST")
 			{
-				std::cout << "Ta oq essa porra? " << lista_foi_preparada << std::endl;
 				if(lista_foi_preparada) {
 					comando_list(copia_lista_usuarios, usuario);
 					lista_foi_preparada = false;
@@ -176,8 +182,16 @@ void client_connection(ConexaoPtr conexao) {
 			{
 				break;
 			}
+			else if (comando == "REQUEST")
+			{
+				comando_request(usuario, arg1);
+			}
+			else if (comando == "ANSWER")
+			{
+				comando_answer(usuario, arg1, arg2);
+			}
 		}
-		else
+		else // comandos quando não está logado
 		{
 			if (comando == "LOGIN")
 			{
@@ -211,6 +225,9 @@ void client_connection(ConexaoPtr conexao) {
 		}
 		strcpy (recvline, "");
 	}	
+
+	//if (logado)
+	//	usuario->desconecta();
 }
 
 void comando_prepare_list(std::vector<UsuarioPtr> &copia_lista_usuarios, UsuarioPtr usuario) {
@@ -238,7 +255,7 @@ void comando_list(std::vector<UsuarioPtr> &copia_lista_usuarios, UsuarioPtr usua
 		if (aux->esta_conectado())
 		{
 			std::string stringaux = "REPLY 031 " + aux->get_login() + " " + aux->get_hora_ultima_conexao() + " ";
-			aux->esta_em_jogo() ? stringaux += "Em jogo\n" : stringaux += "Ocioso\n";
+			aux->esta_em_jogo() ? stringaux += "Jogando\n" : stringaux += "Ocioso\n";
 			usuario->escreve(stringaux);
 		}	
 	}
@@ -323,3 +340,68 @@ UsuarioPtr comando_newusr(ConexaoPtr conexao, std::string login, std::string sen
 	return nullptr;
 }
 
+void comando_request(UsuarioPtr usuario, std::string nome_oponente) {
+	if (usuario->get_login() == nome_oponente)
+		usuario->escreve("REPLY 044 " + nome_oponente); // não pode jogar com ele mesmo
+	else
+	{ 
+		for (auto oponente : usuarios_tcp) {
+			if (oponente->get_login() == nome_oponente)
+			{
+				if (oponente->esta_conectado())
+				{
+					if (!oponente->esta_em_jogo())
+					{
+						// oponente está disponível, envia o convite para ele
+						oponente->escreve("REQUEST " + usuario->get_login());
+					}
+					else
+					{
+						usuario->escreve("REPLY 043 " + nome_oponente); // oponente já está em jogo
+					}
+				}
+				else
+				{
+					usuario->escreve("REPLY 042 " + nome_oponente); // oponente não está conectado
+				}
+				return;
+			}
+		}
+
+		usuario->escreve("REPLY 041 " + nome_oponente); // oponente não existe
+	}
+}
+
+void comando_answer(UsuarioPtr usuario, std::string resposta, std::string nome_oponente)
+{
+	for (auto oponente : usuarios_tcp) {
+		if (oponente->get_login() == nome_oponente)
+		{
+			if (oponente->esta_conectado())
+			{
+				if (!oponente->esta_em_jogo())
+				{
+					oponente->escreve("ANSWER " + resposta + " " + usuario->get_login());
+					if (resposta == "S")
+					{
+						// oponente está disponível e o convite foi aceito, começa a partida
+						PartidaPtr partida = std::make_shared<Partida>(usuario, oponente);
+						usuario->set_partida(partida);
+						oponente->set_partida(partida);
+						usuario->escreve("START X " + oponente->get_login());
+						oponente->escreve("START O " + usuario->get_login());
+					}
+				}
+				else
+				{
+					usuario->escreve("REPLY 051 " + nome_oponente); // oponente já está em jogo
+				}
+			}
+			else
+			{
+				usuario->escreve("REPLY 052 " + nome_oponente); // oponente não está conectado
+			}
+			return;
+		}
+	}
+} 
