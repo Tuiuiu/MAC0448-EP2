@@ -216,7 +216,7 @@ void client_connection(ConexaoPtr conexao) {
 					comando_answer(usuario, arg1, arg2);
 				}
 				else
-					conexao->envia_mensagem("REPLY 099\n"); // comando inválido
+					conexao->envia_mensagem("REPLY 098\n"); // comando inválido
 			}
 		}
 		else // comandos quando não está logado
@@ -243,7 +243,7 @@ void client_connection(ConexaoPtr conexao) {
 			}
 			else 
 			{
-				conexao->envia_mensagem("REPLY 099\n"); // comando inválido
+				conexao->envia_mensagem("REPLY 097\n"); // comando inválido
 			}
 		}
 		strcpy (recvline, "");
@@ -495,14 +495,13 @@ void comando_play(UsuarioPtr usuario, std::string x_str, std::string y_str)
 							
 					}
 					usuario->escreve("REPLY 060 " + resultado_usuario + "\n");
-					usuario->adversario()->escreve("PLAY " + x_str + " " + y_str + " " + resultado_adversario + "\n");
+					usuario->adversario()->escreve("PLAY " + std::string(1, usuario->simbolo()) + " " + x_str + " " + y_str + " " + resultado_adversario + "\n");
 
-					if (resultado_generico != VELHA)
+					if (resultado_generico != NAO_ACABOU)
 					{
 						usuario->adversario()->sai_jogo();
 						usuario->sai_jogo();
 					}
-
 					break;
 				}
 				case POSICAO_INEXISTENTE:

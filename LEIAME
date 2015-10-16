@@ -65,7 +65,7 @@ LOGIN <username> <password> 		|		REPLY 000 <usuario> - Login aceito para usuario
 											REPLY 002 <usuario> - Usuário usuario não existe
                                             REPLY 003 <usuario> <simb> <matriz>
                                                 - Login aceito, mas o usuário estava em jogo e precisa continuar
-                                                - simb é o símbolo do usuário (X ou Y)
+                                                - simb é o símbolo do usuário (X ou O)
                                                 - matriz tem os símbolos do tabuleiro do jogo separados por
                                                     espaço, na ordem (0, 0), (0, 1), (0, 2), (1, 0) etc.
 ------------------------------------------------------------------------------------------											
@@ -96,6 +96,10 @@ PLAY                                |       REPLY 060 <resultado> - jogada foi f
                                             REPLY 061             - jogada fora da matriz
                                             REPLY 062             - posição já preenchida
                                             REPLY 063             - não é a sua vez
+-------------------------------------------------------------------------------------------
+<vários>                            |		REPLY 097 - se não fez login e pede um comando que precisa de login
+											REPLY 098 - se fez login mas não está em jogo e pede um comando que não deveria
+											REPLY 099 - se está em jogo e pede um comando que não deveria
 
 
 Diagramas de trocas de mensagens:
