@@ -112,7 +112,7 @@ UsuarioA                  Servidor                  UsuarioB
     |   ANSWER S UsuarioB     |                         |                          
     |                         |                         |                          
     |  <------------------    |  ------------------->   |                          
-    |   START X UsuarioB      |  START O UsuarioB       | 
+    |   START X UsuarioB      |  START O UsuarioA       | 
     |                         |                         |
 
 

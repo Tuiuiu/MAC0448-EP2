@@ -63,7 +63,7 @@ UsuarioA                  Servidor                  UsuarioB
     |   ANSWER S UsuarioB     |                         |                          
     |                         |                         |                          
     |  <------------------    |  ------------------->   |                          
-    |   START X UsuarioB      |  START O UsuarioB       | 
+    |   START X UsuarioB      |  START O UsuarioA       | 
     |                         |                         |
 
 
@@ -111,7 +111,7 @@ UsuarioA                  Servidor                  UsuarioB
 JOGANDO :
     UsuarioA                  Servidor                  UsuarioB
     |   ------------------>   |                         |                          
-    |    PLAY SIMB x y        |                         |                     
+    |    PLAY x y             |                         |                     
     |   <-----------------    |  ------------------->   |                          
     |   REPLY Cod Result      |   PLAY SIMB x y Result  |      Result é VITORIA, EMPATE, DERROTA ou CONTINUA                    
     |                         |  <-------------------   |                          
