@@ -143,3 +143,14 @@ UsuarioA                  Servidor                  UsuarioB
     |                         |   PLAY x y              |                          
     |  <------------------    |  ------------------->   |                          
     |   PLAY SIMB x y Result  |   REPLY 060 Result      |   
+
+
+
+O que não foi feito
+-------------------
+* UDP
+* TLS
+* log
+* hall of fame
+* mensagens
+* heartbeat
