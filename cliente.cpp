@@ -164,9 +164,10 @@ void recebe_mensagens_servidor(ConexaoPtr conexao) {
 
         for (auto recvline : separa_string(mensagem_recebida))
         {
+            std::string recvline_string(recvline);
             std::regex rgx("([A-Z]*)\\s+(\\w*)(\\s+(\\w*))?");
             std::smatch resultado;
-            std::regex_search(std::string(recvline), resultado, rgx);
+            std::regex_search(recvline_string, resultado, rgx);
             comando = resultado[1];
             arg1 = resultado[2];
 
