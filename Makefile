@@ -1,5 +1,5 @@
 CXXFLAGS = -ansi -Wall -pedantic -std=c++11
-LDFLAGS = -lpthread
+LDFLAGS = -pthread
 
 CC = g++
 
