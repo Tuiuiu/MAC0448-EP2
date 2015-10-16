@@ -17,12 +17,16 @@ LIST (precisa ter enviado
       PREPARE_LIST antes)					031 <usuario> <hora> <estado> - Entrada da lista
 												- usuario é o login
 												- hora é uma string com o horário da última conexão
-												- estado é "Ocioso" ou "Em jogo"
+												- estado é "Ocioso" ou "Jogando"
 											032 - Lista não foi preparada
 ------------------------------------------------------------------------------------------
-REQUEST opponent_name  				|		A definir;
+REQUEST opponent_name  				|		041 <oponente> - oponente não existe
+											042 <oponente> - oponente não está conectado
+											043 <oponente> - oponente já está em jogo
+											044 <oponente> - oponente é o próprio usuário
 ------------------------------------------------------------------------------------------
-ACCEPT opponent_name				| 		A definir;
+ANSWER S|N opponent_name	 		| 		051 <oponente> - oponente não está conectado
+											052 <oponente> - oponente já está em jogo
 ------------------------------------------------------------------------------------------
 
 
@@ -37,16 +41,34 @@ ACCEPT					 - aceita um convite para iniciar um jogo
 
 
 
+Caso de convite aceito:
 
 UsuarioA                  Servidor                  UsuarioB
     |   ------------------>   |                         |                          
     |    REQUEST UsuarioB     |                         |                     
     |                         |  ------------------->   |                          
-    |                         |   REQUEST UsuarioA      |    R = 'S' ou 'N'                      
+    |                         |   REQUEST UsuarioA      |          
     |                         |  <-------------------   |                          
-    |                         |   ANSWER R UsuarioA     |                          
+    |                         |   ANSWER S UsuarioA     |                          
     |  <------------------    |                         |                          
-    |   ANSWER R UsuarioB     |                         |                          
+    |   ANSWER S UsuarioB     |                         |                          
+    |                         |                         |                          
+    |  <------------------    |  ------------------->   |                          
+    |   START X <conexão>     |  START O <conexão>      |  <conexão> são as informações necessárias para o chat entre os jogadores
+    |                         |                         |
+
+
+Caso de convite recusado:
+
+UsuarioA                  Servidor                  UsuarioB
+    |   ------------------>   |                         |                          
+    |    REQUEST UsuarioB     |                         |                     
+    |                         |  ------------------->   |                          
+    |                         |   REQUEST UsuarioA      |                    
+    |                         |  <-------------------   |                          
+    |                         |   ANSWER N UsuarioA     |                          
+    |  <------------------    |                         |                          
+    |   ANSWER N UsuarioB     |                         |                          
     |                         |                         |                          
     |                         |                         |                          
     |                         |                         |                          
@@ -54,6 +76,8 @@ UsuarioA                  Servidor                  UsuarioB
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
+
+Futuro:
 
 UsuarioA                  Servidor                  UsuarioB
     |   ------------------>   |                         |                          
