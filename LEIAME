@@ -21,6 +21,8 @@ $ ./servidor <porta>
 Por exemplo,
 $ ./servidor 8000
 
+O log é gravado no arquivo log.txt.
+
 
 Para rodar o cliente:
 $ ./cliente <Endereco IP|Nome> <Porta> <TCP|UDP>
@@ -66,8 +68,7 @@ LOGIN <username> <password> 		|		REPLY 000 <usuario> - Login aceito para usuario
                                             REPLY 003 <usuario> <simb> <matriz>
                                                 - Login aceito, mas o usuário estava em jogo e precisa continuar
                                                 - simb é o símbolo do usuário (X ou O)
-                                                - matriz tem os símbolos do tabuleiro do jogo separados por
-                                                    espaço, na ordem (0, 0), (0, 1), (0, 2), (1, 0) etc.
+                                                - matriz tem os símbolos do tabuleiro do jogo (ou N para posições vazias) concatenados, na ordem (0, 0), (0, 1), (0, 2), (1, 0) etc. 
 ------------------------------------------------------------------------------------------											
 NEWUSR								|		REPLY 010 <usuario> - Usuario usuario criado
 											REPLY 011 <usuario> - Usuário usuario já existe
@@ -134,7 +135,8 @@ UsuarioA                  Servidor                  UsuarioB
 
 
 - Jogando
-    UsuarioA                  Servidor                  UsuarioB
+
+    UsuarioA                  Servidor              UsuarioB
     |   ------------------>   |                         |                          
     |    PLAY x y             |                         |                     
     |   <-----------------    |  ------------------->   |                          
