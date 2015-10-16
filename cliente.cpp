@@ -84,6 +84,9 @@ void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_ini
 
 void imprime_tabuleiro(char tabuleiro[3][3]);
 
+void retoma_jogo(ConexaoPtr conexao, std::string simbolo, std::string matriz);
+
+
 
 bool respostas_para_receber() { 
     return recebeu_resposta != 0; 
@@ -216,6 +219,8 @@ void recebe_mensagens_servidor(ConexaoPtr conexao) {
                 }
 
                 imprime_tabuleiro(tabuleiro);
+                printf("Digite \"JOGADA x y\" para realizar uma jogada ou \"MSG texto\" para enviar uma mensagem ao seu oponente.\n");
+
 
             } else {
                 mensagens.push(Mensagem(recvline, prioridade));            
@@ -341,7 +346,7 @@ bool efetuar_login (ConexaoPtr conexao) // devolve true se o login deu certo e f
         mensagens.pop(); 
         recebeu_resposta--;
 
-        std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+        std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)(\\s+(\\w*)\\s+(\\w*))?");
         std::smatch resultado;
         std::regex_search(aux3, resultado, rgx);
         std::string comando = resultado[1];
@@ -360,6 +365,11 @@ bool efetuar_login (ConexaoPtr conexao) // devolve true se o login deu certo e f
         else if (arg1 == "002") {
             printf("Usuário %s não existe!\n", arg2.c_str());
             return false;
+        }
+        else if (arg1 == "003") {
+            std::string simbolo = resultado[5];
+            std::string matriz = resultado[6];
+            retoma_jogo(conexao, simbolo, matriz);
         }
     } else {
         printf ("Formato incorreto. Tente novamente.\n");
@@ -785,8 +795,21 @@ void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_ini
             }
         }
     } else {
-        // Pega a string da entrada e faz magia com tabuleiro = essa parada ae
+        int z = 0;
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 2; j++) {
+                char aux;
+                if (tabuleiro_inicial[z] == 'X') aux = 'X';
+                else if (tabuleiro_inicial[z] == 'O') aux = 'O';
+                else if (tabuleiro_inicial[z] == 'N') aux = ' ';
+                else aux = ' ';
+
+                tabuleiro[i][j] = aux;
+                z++;
+            }
+        }
     }
+    imprime_tabuleiro(tabuleiro);
     do {
         printf("Digite \"JOGADA x y\" para realizar uma jogada ou \"MSG texto\" para enviar uma mensagem ao seu oponente.\n");
         //std::cin.clear();
@@ -868,9 +891,17 @@ void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_ini
 
 void imprime_tabuleiro(char tabuleiro[3][3]) {
     int i = 0;
+
+    printf("= = = = Tabuleiro = = = =\n");
     for (i = 0; i < 2; i++) {
-        printf(" %c | %c | %c \n", tabuleiro[i][0], tabuleiro[i][1], tabuleiro[i][2]);
-        printf("___________\n");
+        printf("         %c | %c | %c \n", tabuleiro[i][0], tabuleiro[i][1], tabuleiro[i][2]);
+        printf("        ___________\n");
     }
-    printf(" %c | %c | %c \n", tabuleiro[i][0], tabuleiro[i][1], tabuleiro[i][2]);
+    printf("         %c | %c | %c \n", tabuleiro[i][0], tabuleiro[i][1], tabuleiro[i][2]);
+    printf("= = = = = = = = = = = = =\n");
+}
+
+void retoma_jogo(ConexaoPtr conexao, std::string simbolo, std::string matriz) {
+    printf("Retomando jogo!\n");
+    comandos_ingame(conexao, simbolo.c_str()[0], matriz);
 }
