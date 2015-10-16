@@ -48,7 +48,6 @@ struct ComparaMensagem {
     }
 };
 
-//std::atomic<int> recebeu_resposta(0);
 int recebeu_resposta = 0;
 std::condition_variable mensagens_cv;
 std::mutex mtx;
@@ -185,8 +184,6 @@ void recebe_mensagens_servidor(ConexaoPtr conexao) {
             comando = resultado[1];
             arg1 = resultado[2];
 
-            printf("Chegou a mensagem %s (comando = %s, arg1 = %s)\n", recvline.c_str(), comando.c_str(), arg1.c_str());
-            
             // Prioridade maior = mais importante  = começo da fila
             // Prioridade menor = menos importante = final da fila
             int prioridade = 0;
@@ -201,7 +198,6 @@ void recebe_mensagens_servidor(ConexaoPtr conexao) {
                 prioridade = 1; 
             }
 
-            printf("prioridade: %d\n", prioridade);
             if (comando == "PLAY") {
                 int x, y;
                 std::string simbolo,result, args1, args2, args3;
@@ -216,11 +212,9 @@ void recebe_mensagens_servidor(ConexaoPtr conexao) {
 
 
                 if (result == "VITORIA") {
-                    // Pontos do jogador += 2
                     printf("Você venceu a partida!\n");
                     fim_partida = true;
                 } else if (result == "EMPATE") {
-                    // Pontos do jogador += 1
                     printf("Você empatou a partida!\n");
                     fim_partida = true;
                 } else if (result == "DERROTA") {
@@ -236,7 +230,6 @@ void recebe_mensagens_servidor(ConexaoPtr conexao) {
                 recebeu_resposta++;
                 mensagens_cv.notify_one();
             }
-            //printf("recebeu_resposta logo depois de receber uma: %d\n", recebeu_resposta.load());
         }
     }
     if (n < 0)
@@ -250,18 +243,14 @@ void interacao_usuario(ConexaoPtr conexao) {
 
     int opcao = 0;
     bool logado = false;
-    //bool cadastrando = false;
     bool quer_sair = false;
     std::string aux1, aux2, aux3, output;
-    // char str1[31], str2[31], str3[31];
 
-    printf ("Olá senhor usuário, gostaria de jogar um jogo? :v\n MUAHAHA \n =) \n");
     while (!quer_sair){
         while (!logado && !quer_sair) {
 
             bool error = false;
             do {
-                // printf("\033[2J\033[;H");
                 printf ("Antes de executar qualquer ação, você deve estar logado.\n");
                 printf ("Digite:\n  1 para fazer login\n  2 para criar um novo usuário\n  3 para sair do programa\n");
                 std::cin >> opcao;
@@ -270,8 +259,7 @@ void interacao_usuario(ConexaoPtr conexao) {
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 printf("\033[2J\033[;H"); // clear
             } while (error);
-            
-            //printf("Opção: %d\n", opcao);
+
             switch (opcao) {
                 case 1:
                     logado = efetuar_login(conexao);
@@ -289,7 +277,6 @@ void interacao_usuario(ConexaoPtr conexao) {
 
         while (logado && !quer_sair) {
             bool error;
-            //printf("\033[2J\033[;H"); // clear
             do {
                 printf ("\n=============== MENU PRINCIPAL ===============\n");
                 printf ("Digite:\n  1 para listar jogadores conectados\n  2 para enviar convite de jogo\n  3 para ver os convites recebidos\n  4 para ver o hall of fame\n  5 para logout\n  6 para sair do programa\n");
@@ -326,7 +313,6 @@ void interacao_usuario(ConexaoPtr conexao) {
             }
         }
     }
-    // while (mensagens.empty()) {}
 }
 
 bool efetuar_login (ConexaoPtr conexao) // devolve true se o login deu certo e false caso contrário
@@ -431,20 +417,10 @@ bool efetuar_cadastro (ConexaoPtr conexao) // devolve true se conseguiu cadastra
     std::string aux3 = "";
     printf("Criando novo usuário. Digite um login: \n");
     std::cin >> aux1;
-    // std::cin >> aux1 >> aux2; // scanf("%30s", aux1);
-    // if(!aux2.empty()) {
-    //     printf ("Excedeu número de parâmetros, tente novamente.\n");
-    //     continue;
-    // }
     printf("Digita a senha: \n");
     std::cin >> aux2;
-    // std::cin >> aux2 >> aux3; // scanf("%30s", aux2);
-    // if (!aux3.empty()) {
-    //     printf("Não insira espaços na senha! Tente novamente.\n");
-    //     continue;
-    // }
     printf("Digite novamente a senha: \n");
-    std::cin >> aux3; // scanf("%30s", aux3);
+    std::cin >> aux3;
 
     if (aux2 != aux3) {
         printf("Confirmação de senha falhou, repita o processo.\n\n");
@@ -512,7 +488,6 @@ void listar_jogadores(ConexaoPtr conexao)
         if (arg1 == "030") // começo da lista
         {
             num_usuarios = atoi(arg2.c_str());
-            printf("num_usuarios = %d\n", num_usuarios);
         }
         else
         {
@@ -528,14 +503,10 @@ void listar_jogadores(ConexaoPtr conexao)
 
     conexao->envia_mensagem("LIST");
 
-    //printf("Antes do while\n");
     while (num_usuarios > 0)
     {
-        //printf("Antes do mutex\n");
         std::unique_lock<std::mutex> lck(mtx);
-        //printf("Antes de esperar\n");
         mensagens_cv.wait(lck, respostas_para_receber);
-        //printf("Depois de esperar\n");
 
         Mensagem msg(mensagens.top());
         std::string aux = msg.conteudo;
@@ -550,9 +521,6 @@ void listar_jogadores(ConexaoPtr conexao)
         std::string arg2 = resultado[3];
         std::string arg3 = resultado[4];
         std::string arg4 = resultado[5];
-
-        //printf("Aux : %s\n", aux.c_str());
-        //printf("arg1 : %s, arg2 : %s, arg3 : %s, arg4 : %s\n", arg1.c_str(), arg2.c_str(), arg3.c_str(), arg4.c_str());
 
         if (arg1 == "031")
         {
@@ -583,21 +551,14 @@ void enviar_convite(ConexaoPtr conexao)
     // espera resposta ao convite
     {
         std::unique_lock<std::mutex> lck(mtx);
-        //printf("oi1, recebeu = %d\n", recebeu_resposta);
         mensagens_cv.wait(lck, respostas_para_receber);
-        //printf("oi2, recebeu = %d\n", recebeu_resposta);
     }
 
-        printf ("mensagens.size pré-top: %d\n", (int) mensagens.size());
         Mensagem msg(mensagens.top());
-        printf("oi3\n");
 
         std::string aux = msg.conteudo;
-        printf ("mensagens.size: %d\n", (int) mensagens.size());
-        std::cout << "oi4, aux: " << aux << std::endl;
         mensagens.pop();
 
-        printf("oi5\n");
         recebeu_resposta--;        
 
     std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
@@ -612,13 +573,7 @@ void enviar_convite(ConexaoPtr conexao)
         if (arg1 == "S")
         {
             printf("Convite aceito. Aguardando início de partida...");
-
-            printf("ANTES DO CONEXAO\n");
             joga_jogo(conexao);
-            printf("DEPOIS DO CONEXAO\n");
-            // ROLÊS
-
-
         }
         else if (arg1 == "N")
         {
@@ -760,12 +715,8 @@ void joga_jogo(ConexaoPtr conexao) {
     char simbolo;
 
     {
-        //printf("\npre-wait. recebeu_resposta: %d\n\n", recebeu_resposta.load());
-        printf("pre-wait. Recebeu_resposta: %d\n", recebeu_resposta);
         std::unique_lock<std::mutex> lck(mtx);
         mensagens_cv.wait(lck, respostas_para_receber);
-        printf("pos-wait. Recebeu_resposta: %d\n", recebeu_resposta);
-        //printf("\npos-wait. recebeu_resposta: %d\n\n", recebeu_resposta.load());
     }
     Mensagem msg(mensagens.top()); 
     std::string aux = msg.conteudo;
@@ -820,16 +771,11 @@ void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_ini
     }
     imprime_tabuleiro(tabuleiro);
     do {
-        printf("Digite \"JOGADA x y\" para realizar uma jogada ou \"MSG texto\" para enviar uma mensagem ao seu oponente.\n");
-        //std::cin.clear();
-        //std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        printf("Digite \"JOGADA x y\" para realizar uma jogada.\n");
         std::getline(std::cin, entrada);
         error = std::cin.fail();
 
-        printf("Entrada: %s\n", entrada.c_str());
-        printf("fora do jogada\n");
         if (entrada.find("JOGADA") == 0) {
-            printf("dentro do jogada!\n");
             std::regex rgx("([A-Z]*)\\s+(\\w*)(\\s+(\\w*))?");
             std::smatch resultado, resposta;
             std::regex_search(entrada, resultado, rgx);
@@ -853,8 +799,6 @@ void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_ini
             std::string codigo = resposta[2];
             std::string result = resposta[4];
 
-            printf("codigo: %s, result: %s\n", codigo.c_str(), result.c_str());
-
             if (comando == "REPLY") {
                 if (codigo == "060") {
                     int x, y;
@@ -863,11 +807,9 @@ void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_ini
                     tabuleiro[x][y] = simbolo;
                     imprime_tabuleiro(tabuleiro);
                     if (result == "VITORIA") {
-                        // Pontos do jogador += 2
                         printf("Você venceu a partida!\n");
                         fim_partida = true;
                     } else if (result == "EMPATE") {
-                        // Pontos do jogador += 1
                         printf("Você empatou a partida!\n");
                         fim_partida = true;
                     } else if (result == "DERROTA") {
@@ -887,10 +829,7 @@ void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_ini
                 } else {
 
                 }
-            }
-        } else if (entrada.find("MSG") == 0) {
-            std::string conteudo_mensagem = entrada.substr(4);
-            // Envia pro outro usuário o que está contido em conteudo_mensagem 
+            } 
         } else {
             printf("Comando inválido. A palavra inicial deve ser ou \"JOGADA\" ou \"MSG\".\n");
         }
