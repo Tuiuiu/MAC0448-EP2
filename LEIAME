@@ -1,4 +1,62 @@
-Funções do Protocolo :
+EP2 de MAC0448
+ * Gabriel Ferreira Guilhoto    Número USP 4404279
+ * Lucas Dário                  Número USP 7990940
+
+Como compilar
+-------------
+
+Para compilar o servidor:
+$ make servidor
+
+Para compilar o cliente:
+$ make cliente
+
+
+Como rodar
+----------
+
+Para rodar o servidor:
+$ ./servidor <porta>
+
+Por exemplo,
+$ ./servidor 8000
+
+
+Para rodar o cliente:
+$ ./cliente <Endereco IP|Nome> <Porta> <TCP|UDP>
+(mas como não implementamos conexões UDP, o último parâmetro tem de ser TCP)
+
+Por exemplo,
+./cliente localhost 8000 TCP
+
+A interação no cliente é feita por meio de um menu no terminal. Basta seguir as instruções que aparecem na tela para operar o cliente.
+
+
+Protocolo para a troca de mensagens
+-----------------------------------
+
+Comandos que cliente envia para o servidor:
+
+PREPARE_LIST: Deve ser chamada antes da list. Informa quantos usuários estão conectados no mesmo protocolo que o usuário atual.
+LIST: Lista os usuários conectados no mesmo protocolo que o usuário atual.
+LOGIN <username> <password>: Conecta o usuário com login username e senha password
+LOGOUT: Desconecta o usuário do servidor;
+NEWUSR <username> <password>: Cria novo usuario com login username e senha password
+REQUEST <opponent>: Envia um convite para iniciar um jogo com o usuário opponent
+ANSWER <S|N> <opponent_name>: Responde ao convite para iniciar um jogo (com S aceita e com N nega)
+PLAY <x> <y>: Informa que quer fazer uma jogada na posição (x, y) do tabuleiro (x e y vão de 0 a 2). A partida precisa já estar iniciada (precisa ter recebido um START).
+
+
+Comandos que o servidor envia para um cliente:
+
+REPLY <código> <outros parâmetros>: Resposta genérica a um comando que o cliente enviou, cujo significado depende do código (ver tabela abaixo)
+REQUEST <solicitante>: Envia ao oponente depois de o solicitante enviar "REQUEST <oponente>" para o servidor
+ANSWER <S|N> <convidado>: Envia a quem convidou o convidado depois que o convidado reponder
+START <X|O> <oponente>: Informa que a partida com o oponente começou e que quem recebeu a mensagem joga com o X ou a O
+PLAY <simbolo> <x> <y> <resultado>: Informa que o oponente marcou seu simbolo na posição (x, y) e com isso aconteceu o resultado (que pode ser VITORIA, EMPATE, DERROTA ou CONTINUA)
+
+
+Respostas do servidor a comandos do cliente:
 
 Cliente envia :						|		Resposta do servidor:
 									|
@@ -34,24 +92,15 @@ ANSWER <S|N> <opponent_name> 		| 		REPLY 051 <oponente> - oponente não está co
 											REPLY 052 <oponente> - oponente já está em jogo
 ------------------------------------------------------------------------------------------
 PLAY                                |       REPLY 060 <resultado> - jogada foi feita e o resultado
-                                                                é retornado
+                                                é retornado (VITORIA, EMPATE, DERROTA ou CONTINUA)
                                             REPLY 061             - jogada fora da matriz
                                             REPLY 062             - posição já preenchida
                                             REPLY 063             - não é a sua vez
 
 
+Diagramas de trocas de mensagens:
 
-LIST   					 - lista os usuários da mesma conexão que o usuário atual
-LOGIN  username password - conecta o usuário com login username e senha password
-LOGOUT                   - desconecta o usuário do servidor;
-NEWUSR username password - cria novo usuario com login username e senha password
-REQUEST					 - envia  um convite para iniciar um jogo
-ACCEPT					 - aceita um convite para iniciar um jogo
-
-
-
-Caso de convite aceito:
-
+- Aceitação de convite
 UsuarioA                  Servidor                  UsuarioB
     |   ------------------>   |                         |                          
     |    REQUEST UsuarioB     |                         |                     
@@ -67,8 +116,7 @@ UsuarioA                  Servidor                  UsuarioB
     |                         |                         |
 
 
-Caso de convite recusado:
-
+- Rejeição de convite
 UsuarioA                  Servidor                  UsuarioB
     |   ------------------>   |                         |                          
     |    REQUEST UsuarioB     |                         |                     
@@ -78,51 +126,16 @@ UsuarioA                  Servidor                  UsuarioB
     |                         |   ANSWER N UsuarioA     |                          
     |  <------------------    |                         |                          
     |   ANSWER N UsuarioB     |                         |                         
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |
-
-------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------
-
-Futuro:
-
-UsuarioA                  Servidor                  UsuarioB
-    |   ------------------>   |                         |                          
-    |    REQUEST UsuarioB     |                         |                     
-    |                         |  ------------------->   |                          
-    |                         |   REQUEST UsuarioA      |                          
-    |                         |  <-------------------   |                          
-    |                         |   RECEIVED UsuarioA     |                          
-    |  <------------------    |  ------------------->   |                          
-    |   REPLY 040 UsuarioB    |   REPLY                 |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
+    |                         |                         |   
 
 
-
-JOGANDO :
+- Jogando
     UsuarioA                  Servidor                  UsuarioB
     |   ------------------>   |                         |                          
     |    PLAY x y             |                         |                     
     |   <-----------------    |  ------------------->   |                          
-    |   REPLY Cod Result      |   PLAY SIMB x y Result  |      Result é VITORIA, EMPATE, DERROTA ou CONTINUA                    
+    |   REPLY 060 Result      |   PLAY SIMB x y Result  |      Result é VITORIA, EMPATE, DERROTA ou CONTINUA                    
     |                         |  <-------------------   |                          
-    |                         |   PLAY SIMB x y         |                          
+    |                         |   PLAY x y              |                          
     |  <------------------    |  ------------------->   |                          
-    |   PLAY SIMB x y Result  |   REPLY Cod Result      |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
-    |                         |                         |                          
+    |   PLAY SIMB x y Result  |   REPLY 060 Result      |   
