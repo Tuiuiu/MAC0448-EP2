@@ -560,25 +560,26 @@ void enviar_convite(ConexaoPtr conexao)
     conexao->envia_mensagem("REQUEST " + oponente);
     printf("Enviando convite para %s...\n", oponente.c_str());
 
-    // espera resposta ao convite
-
     recebeu_resposta = 0;
-    std::unique_lock<std::mutex> lck(mtx);
-    //printf("oi1, recebeu = %d\n", recebeu_resposta);
-    mensagens_cv.wait(lck, respostas_para_receber);
-    //printf("oi2, recebeu = %d\n", recebeu_resposta);
+    // espera resposta ao convite
+    {
+        std::unique_lock<std::mutex> lck(mtx);
+        //printf("oi1, recebeu = %d\n", recebeu_resposta);
+        mensagens_cv.wait(lck, respostas_para_receber);
+        //printf("oi2, recebeu = %d\n", recebeu_resposta);
+    }
 
-    printf ("mensagens.size pré-top: %d\n", (int) mensagens.size());
-    Mensagem msg(mensagens.top());
-    printf("oi3\n");
+        printf ("mensagens.size pré-top: %d\n", (int) mensagens.size());
+        Mensagem msg(mensagens.top());
+        printf("oi3\n");
 
-    std::string aux = msg.conteudo;
-    printf ("mensagens.size: %d\n", (int) mensagens.size());
-    std::cout << "oi4, aux: " << aux << std::endl;
-    mensagens.pop();
+        std::string aux = msg.conteudo;
+        printf ("mensagens.size: %d\n", (int) mensagens.size());
+        std::cout << "oi4, aux: " << aux << std::endl;
+        mensagens.pop();
 
-    printf("oi5\n");
-    recebeu_resposta--;
+        printf("oi5\n");
+        recebeu_resposta--;        
 
     std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
     std::smatch resultado;
@@ -739,13 +740,15 @@ void ver_convites(ConexaoPtr conexao)
 void joga_jogo(ConexaoPtr conexao) {
     char simbolo;
 
-    //printf("\npre-wait. recebeu_resposta: %d\n\n", recebeu_resposta.load());
-    printf("pre-wait. Recebeu_resposta: %d\n", recebeu_resposta);
-    std::unique_lock<std::mutex> lck2(mtx2);
-    mensagens_cv.wait(lck2, respostas_para_receber);
-    printf("pos-wait. Recebeu_resposta: %d\n", recebeu_resposta);
-    //printf("\npos-wait. recebeu_resposta: %d\n\n", recebeu_resposta.load());
-    Mensagem msg(mensagens.top());
+    {
+        //printf("\npre-wait. recebeu_resposta: %d\n\n", recebeu_resposta.load());
+        printf("pre-wait. Recebeu_resposta: %d\n", recebeu_resposta);
+        std::unique_lock<std::mutex> lck(mtx);
+        mensagens_cv.wait(lck, respostas_para_receber);
+        printf("pos-wait. Recebeu_resposta: %d\n", recebeu_resposta);
+        //printf("\npos-wait. recebeu_resposta: %d\n\n", recebeu_resposta.load());
+    }
+    Mensagem msg(mensagens.top()); 
     std::string aux = msg.conteudo;
     mensagens.pop();
     recebeu_resposta--;
@@ -786,12 +789,15 @@ void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_ini
     }
     do {
         printf("Digite \"JOGADA x y\" para realizar uma jogada ou \"MSG texto\" para enviar uma mensagem ao seu oponente.\n");
-        getline(std::cin, entrada);
+        //std::cin.clear();
+        //std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::getline(std::cin, entrada);
         error = std::cin.fail();
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
+        printf("Entrada: %s\n", entrada.c_str());
+        printf("fora do jogada\n");
         if (entrada.find("JOGADA") == 0) {
+            printf("dentro do jogada!\n");
             std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
             std::smatch resultado, resposta;
             std::regex_search(entrada, resultado, rgx);
@@ -799,8 +805,8 @@ void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_ini
             std::string arg2 = resultado[3];
             std::string simbolo_str(1, simbolo);
 
-            std::string output = "PLAY " + simbolo_str + " " + arg1 + " " + arg2; 
-
+            std::string output = "PLAY " + arg1 + " " + arg2; 
+            conexao->envia_mensagem(output);
             
             std::unique_lock<std::mutex> lck(mtx);
             mensagens_cv.wait(lck, respostas_para_receber);
@@ -814,6 +820,8 @@ void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_ini
             std::string comando = resposta[1];
             std::string codigo = resposta[2];
             std::string result = resposta[3];
+
+            printf("codigo: %s, result: %s\n", codigo.c_str(), result.c_str());
 
             if (comando == "REPLY") {
                 if (codigo == "060") {
