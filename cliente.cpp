@@ -48,9 +48,11 @@ struct ComparaMensagem {
     }
 };
 
-std::atomic<int> recebeu_resposta(0);
+//std::atomic<int> recebeu_resposta(0);
+int recebeu_resposta = 0;
 std::condition_variable mensagens_cv;
 std::mutex mtx;
+std::mutex mtx2;
 
 std::priority_queue<Mensagem, std::vector<Mensagem>, ComparaMensagem> mensagens;
 std::vector<std::string> convites;
@@ -192,9 +194,11 @@ void recebe_mensagens_servidor(ConexaoPtr conexao) {
                 prioridade = 2;
             else if (comando == "REQUEST")
                 printf ("Novo convite de %s recebido. Responda ao convite no menu principal.\n", arg1.c_str()); // prioridade continua 0
-            else // START etc.
+            else { // START etc.
                 prioridade = 1; 
+            }
 
+            printf("prioridade: %d\n", prioridade);
             if (comando == "PLAY") {
                 int x, y;
                 std::string simbolo,result, args1, args2, args3;
@@ -218,6 +222,7 @@ void recebe_mensagens_servidor(ConexaoPtr conexao) {
                 recebeu_resposta++;
                 mensagens_cv.notify_one();
             }
+            //printf("recebeu_resposta logo depois de receber uma: %d\n", recebeu_resposta.load());
         }
     }
     if (n < 0)
@@ -588,7 +593,9 @@ void enviar_convite(ConexaoPtr conexao)
         {
             printf("Convite aceito. Aguardando início de partida...");
 
+            printf("ANTES DO CONEXAO\n");
             joga_jogo(conexao);
+            printf("DEPOIS DO CONEXAO\n");
             // ROLÊS
 
 
@@ -730,11 +737,14 @@ void ver_convites(ConexaoPtr conexao)
 }
 
 void joga_jogo(ConexaoPtr conexao) {
-
     char simbolo;
-    std::unique_lock<std::mutex> lck(mtx);
-    mensagens_cv.wait(lck, respostas_para_receber);
-    
+
+    //printf("\npre-wait. recebeu_resposta: %d\n\n", recebeu_resposta.load());
+    printf("pre-wait. Recebeu_resposta: %d\n", recebeu_resposta);
+    std::unique_lock<std::mutex> lck2(mtx2);
+    mensagens_cv.wait(lck2, respostas_para_receber);
+    printf("pos-wait. Recebeu_resposta: %d\n", recebeu_resposta);
+    //printf("\npos-wait. recebeu_resposta: %d\n\n", recebeu_resposta.load());
     Mensagem msg(mensagens.top());
     std::string aux = msg.conteudo;
     mensagens.pop();
