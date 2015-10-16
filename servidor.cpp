@@ -59,13 +59,7 @@ int main (int argc, char **argv) {
 	int listenfd, connfd;
 	/* Informações sobre o socket (endereço e porta) ficam nesta struct */
 	struct sockaddr_in servaddr;
-
-	//char string[100];
-
 	std::vector<std::thread> TCPThreads;
-
-	//ConexaoPtr conexaoaux;
-
 
 	if (argc != 2) {
 		fprintf(stderr,"Uso: %s <Porta>\n",argv[0]);
@@ -103,26 +97,14 @@ int main (int argc, char **argv) {
 
 
 		ConexaoPtr conexaoaux = std::make_shared<ConexaoTCP>(connfd);
-
-		/* UsuarioPtr useraux(conexaoaux);
-		
-		usuarios_tcp.emplace_back(useraux);*/
 		 
 		TCPThreads.emplace_back(client_connection, conexaoaux);
-
-		//sprintf(string, "Conexão estabelecida\n");
-		//conexaoaux->envia_mensagem(string); // write(connfd, string, strlen(string));
 	}
 
 	return 0;	
 }
 
 void client_connection(ConexaoPtr conexao) {
-	// int* aux = (int*) entrada;
-	// int connfd = *(aux);
-	//UsuarioPtr usuario = (UsuarioPtr) entrada;
-	//int x, y;
-	//char simbolo;
 	bool logado = false;
 	bool lista_foi_preparada = false;
 	std::vector<UsuarioPtr> copia_lista_usuarios;
@@ -138,14 +120,10 @@ void client_connection(ConexaoPtr conexao) {
 	ssize_t  n;
 
 	while ((n=conexao->recebe_mensagem(recvline)) > 0) {
-		/*sscanf(recvline, "%d %d %c", &x, &y, &simbolo);
-		partida.fazJogada(x,y,simbolo);
-		std::cout << partida.verificaResultado() << std::endl;
-		partida.imprimeTabuleiro();*/
 
 		recvline[n] = '\0';
 
-		printf ("Recvline: %s\n", recvline);
+		printf ("Recebeu: %s\n", recvline);
 		std::string recvline_string(recvline);
 
 		std::regex rgx("([A-Z_]*)(\\s+(\\w*))?(\\s+(\\w*))?");
@@ -155,12 +133,6 @@ void client_connection(ConexaoPtr conexao) {
 		arg1 = resultado[3];
 		arg2 = resultado[5];
 		std::string stringaux;
-		/*for(size_t i=0; i<resultado.size(); ++i)
-		{
-		    std::cout << "Resultado " << i << " é: " << resultado[i] << std::endl;
-		}*/
-
-		printf ("Comando: %s\nArg1: %s\nArg2: %s\n", comando.c_str(), arg1.c_str(), arg2.c_str());
 
 		if (logado)
 		{
@@ -249,12 +221,11 @@ void client_connection(ConexaoPtr conexao) {
 		strcpy (recvline, "");
 	}	
 
-	//if (logado)
-	//	usuario->desconecta();
+	if (logado)
+		usuario->desconecta();
 }
 
 void comando_prepare_list(std::vector<UsuarioPtr> &copia_lista_usuarios, UsuarioPtr usuario) {
-	//copia_lista_usuarios = usuarios_tcp;
 	for (auto user : usuarios_tcp)
 	{
 		if (user->esta_conectado())
@@ -262,15 +233,12 @@ void comando_prepare_list(std::vector<UsuarioPtr> &copia_lista_usuarios, Usuario
 	}
 
 	int tam_lista_usuarios = copia_lista_usuarios.size();
-	printf("tam_lista_usuarios = %d\n", tam_lista_usuarios);
 	std::string stringaux = "REPLY 030 " + std::to_string(tam_lista_usuarios) + "\n";
-	printf("stringaux = %s", stringaux.c_str());
 	usuario->escreve(stringaux);
 }
 
 void comando_list(std::vector<UsuarioPtr> &copia_lista_usuarios, UsuarioPtr usuario) {
 	for (auto bla : copia_lista_usuarios) {
-		printf("\n\n\n\n AEHOOOO %s \n\n", bla->get_login().c_str());
 	}
 	while (!copia_lista_usuarios.empty()){
 		UsuarioPtr aux = copia_lista_usuarios.back();
@@ -296,13 +264,8 @@ UsuarioPtr comando_login(ConexaoPtr conexao, std::string login, std::string senh
 			if (user->get_login() == login) {
 				if (user->confere_senha(senha)) {
 					user->atualiza_conexao(conexao);
-					// usuario = user;
 					loginExiste = true;
-					// logado = true;
 					user->conecta();
-					//stringaux = "Conectado como \'";
-					//stringaux += login;
-					//stringaux += "\'.\n";
 					std::string stringaux;
 					if (user->esta_em_jogo())
 					{
@@ -327,9 +290,6 @@ UsuarioPtr comando_login(ConexaoPtr conexao, std::string login, std::string senh
 			}
 		}
 		if (loginExiste == false) {
-			//stringaux = "Login \'";
-			//stringaux += login; 
-			//stringaux += "\' não existente\n";
 			std::string stringaux = "REPLY 002 ";
 			stringaux += login;
 			conexao->envia_mensagem(stringaux + "\n");
