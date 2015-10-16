@@ -55,6 +55,10 @@ std::mutex mtx;
 std::priority_queue<Mensagem, std::vector<Mensagem>, ComparaMensagem> mensagens;
 std::vector<std::string> convites;
 
+char tabuleiro[3][3];
+bool fim_partida = true;
+
+
 
 void recebe_mensagens_servidor(ConexaoPtr conexao);
 
@@ -71,6 +75,12 @@ void listar_jogadores(ConexaoPtr conexao);
 void enviar_convite(ConexaoPtr conexao);
 
 void ver_convites(ConexaoPtr conexao);
+
+void joga_jogo(ConexaoPtr conexao);
+
+void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_inicial);
+
+void imprime_tabuleiro(char tabuleiro[3][3]);
 
 
 bool respostas_para_receber() { 
@@ -164,7 +174,7 @@ void recebe_mensagens_servidor(ConexaoPtr conexao) {
 
         for (auto recvline : separa_string(mensagem_recebida))
         {
-            std::regex rgx("([A-Z]*)\\s+(\\w*)(\\s+(\\w*))?");
+            std::regex rgx("([A-Z]*)\\s+(\\w*)(\\s+(\\w*))?(\\s+(\\w*))?(\\s+(\\w*))?");
             std::smatch resultado;
             std::regex_search(recvline, resultado, rgx);
             comando = resultado[1];
@@ -185,10 +195,29 @@ void recebe_mensagens_servidor(ConexaoPtr conexao) {
             else // START etc.
                 prioridade = 1; 
 
-            mensagens.push(Mensagem(recvline, prioridade));            
+            if (comando == "PLAY") {
+                int x, y;
+                std::string simbolo,result, args1, args2, args3;
+                simbolo = resultado[2];
+                args1 = resultado[4];
+                args2 = resultado[6];
+                args3 = resultado[8];
+                x = atoi(args1.c_str());
+                y = atoi(args2.c_str());
+                result = args3;
+                tabuleiro[x][y] = simbolo.c_str()[0];
 
-            recebeu_resposta++;
-            mensagens_cv.notify_one();
+                if (result == "VITORIA" || result == "DERROTA" || result == "EMPATE") {
+                    fim_partida = true;
+                }
+
+                imprime_tabuleiro(tabuleiro);
+
+            } else {
+                mensagens.push(Mensagem(recvline, prioridade));            
+                recebeu_resposta++;
+                mensagens_cv.notify_one();
+            }
         }
     }
     if (n < 0)
@@ -559,7 +588,9 @@ void enviar_convite(ConexaoPtr conexao)
         {
             printf("Convite aceito. Aguardando início de partida...");
 
+            joga_jogo(conexao);
             // ROLÊS
+
 
         }
         else if (arg1 == "N")
@@ -673,6 +704,7 @@ void ver_convites(ConexaoPtr conexao)
                         printf("Convite aceito. Aguardando início de partida...\n");
                         conexao->envia_mensagem("ANSWER S " + oponente);
                         quer_sair = true;
+                        joga_jogo(conexao);
                         // espera início da partida
                         break;
                     case 2:
@@ -695,4 +727,132 @@ void ver_convites(ConexaoPtr conexao)
         mensagens.push(mensagens_nao_requests.front());
         mensagens_nao_requests.pop();
     } 
+}
+
+void joga_jogo(ConexaoPtr conexao) {
+
+    char simbolo;
+    std::unique_lock<std::mutex> lck(mtx);
+    mensagens_cv.wait(lck, respostas_para_receber);
+    
+    Mensagem msg(mensagens.top());
+    std::string aux = msg.conteudo;
+    mensagens.pop();
+    recebeu_resposta--;
+
+    std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+    std::smatch resultado;
+    std::regex_search(aux, resultado, rgx);
+    std::string comando = resultado[1];
+    std::string arg1 = resultado[2];
+    std::string arg2 = resultado[3];
+
+    if (comando == "START") {
+        if (arg1 == "X") {
+            simbolo = arg1.c_str()[0];
+
+        } else if (arg1 == "O") {
+            simbolo = arg1.c_str()[0];
+        }
+
+        comandos_ingame(conexao, simbolo, " ");
+    }
+    else printf("Erro inesperado. Você deveria jogar agora.\n");
+}
+
+void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_inicial) {
+    std::string entrada;
+    fim_partida = false;
+    bool error;
+
+    if (tabuleiro_inicial == " ") {
+        for (int i = 0; i < 3; i++){
+            for (int j = 0; j < 3; j++) {
+                tabuleiro[i][j] = ' ';
+            }
+        }
+    } else {
+        // Pega a string da entrada e faz magia com tabuleiro = essa parada ae
+    }
+    do {
+        printf("Digite \"JOGADA x y\" para realizar uma jogada ou \"MSG texto\" para enviar uma mensagem ao seu oponente.\n");
+        getline(std::cin, entrada);
+        error = std::cin.fail();
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        if (entrada.find("JOGADA") == 0) {
+            std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+            std::smatch resultado, resposta;
+            std::regex_search(entrada, resultado, rgx);
+            std::string arg1 = resultado[2];
+            std::string arg2 = resultado[3];
+            std::string simbolo_str(1, simbolo);
+
+            std::string output = "PLAY " + simbolo_str + " " + arg1 + " " + arg2; 
+
+            
+            std::unique_lock<std::mutex> lck(mtx);
+            mensagens_cv.wait(lck, respostas_para_receber);
+            
+            Mensagem msg(mensagens.top());
+            std::string aux = msg.conteudo;
+            mensagens.pop();
+            recebeu_resposta--;
+
+            std::regex_search(aux, resposta, rgx);
+            std::string comando = resposta[1];
+            std::string codigo = resposta[2];
+            std::string result = resposta[3];
+
+            if (comando == "REPLY") {
+                if (codigo == "060") {
+                    int x, y;
+                    x = atoi(arg1.c_str());
+                    y = atoi(arg2.c_str());
+                    tabuleiro[x][y] = simbolo;
+                    imprime_tabuleiro(tabuleiro);
+                    if (result == "VITORIA") {
+                        // Pontos do jogador += 2
+                        printf("Você venceu a partida!\n");
+                        fim_partida = true;
+                    } else if (result == "EMPATE") {
+                        // Pontos do jogador += 1
+                        printf("Você empatou a partida!\n");
+                        fim_partida = true;
+                    } else if (result == "DERROTA") {
+                        printf("Você perdeu a partida!\n");
+                        fim_partida = true;
+                    } else if (result == "CONTINUA"){
+
+                    } else {
+                        printf("Resultado inválido de jogo.\n");
+                    }
+                } else if (codigo == "061") {
+                    printf("Jogada fora dos limites do tabuleiro. Tente outro valor (x e y entre 0 e 2).\n");
+                } else if (codigo == "062") {
+                    printf("A posição escolhida já encontra-se preenchida. Tente outro valor.\n");
+                } else if (codigo == "063") {
+                    printf("Jogada inválida. O turno é do oponente.\n");
+                } else {
+
+                }
+            }
+        } else if (entrada.find("MSG") == 0) {
+            std::string conteudo_mensagem = entrada.substr(4);
+            // Envia pro outro usuário o que está contido em conteudo_mensagem 
+        } else {
+            printf("Comando inválido. A palavra inicial deve ser ou \"JOGADA\" ou \"MSG\".\n");
+        }
+    } while (error || !fim_partida);
+
+}
+
+void imprime_tabuleiro(char tabuleiro[3][3]) {
+    int i = 0;
+    for (i = 0; i < 2; i++) {
+        printf(" %c | %c | %c \n", tabuleiro[i][0], tabuleiro[i][1], tabuleiro[i][2]);
+        printf("___________\n");
+    }
+    printf(" %c | %c | %c \n", tabuleiro[i][0], tabuleiro[i][1], tabuleiro[i][2]);
 }
