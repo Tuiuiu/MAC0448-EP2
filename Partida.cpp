@@ -95,7 +95,7 @@ std::string Partida::tabuleiro_em_string()
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
 		{
-			if (tabuleiro[i][j])
+			if (tabuleiro[i][j] == ' ')
 				resultado += 'N';
 			else
 				resultado += tabuleiro[i][j];

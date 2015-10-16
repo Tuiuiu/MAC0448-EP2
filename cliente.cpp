@@ -214,13 +214,22 @@ void recebe_mensagens_servidor(ConexaoPtr conexao) {
                 result = args3;
                 tabuleiro[x][y] = simbolo.c_str()[0];
 
-                if (result == "VITORIA" || result == "DERROTA" || result == "EMPATE") {
+
+                if (result == "VITORIA") {
+                    // Pontos do jogador += 2
+                    printf("Você venceu a partida!\n");
+                    fim_partida = true;
+                } else if (result == "EMPATE") {
+                    // Pontos do jogador += 1
+                    printf("Você empatou a partida!\n");
+                    fim_partida = true;
+                } else if (result == "DERROTA") {
+                    printf("Você perdeu a partida!\n");
                     fim_partida = true;
                 }
 
                 imprime_tabuleiro(tabuleiro);
                 printf("Digite \"JOGADA x y\" para realizar uma jogada ou \"MSG texto\" para enviar uma mensagem ao seu oponente.\n");
-
 
             } else {
                 mensagens.push(Mensagem(recvline, prioridade));            
@@ -821,7 +830,7 @@ void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_ini
         printf("fora do jogada\n");
         if (entrada.find("JOGADA") == 0) {
             printf("dentro do jogada!\n");
-            std::regex rgx("([A-Z]*)\\s+(\\w*)\\s+(\\w*)");
+            std::regex rgx("([A-Z]*)\\s+(\\w*)(\\s+(\\w*))?");
             std::smatch resultado, resposta;
             std::regex_search(entrada, resultado, rgx);
             std::string arg1 = resultado[2];
@@ -842,7 +851,7 @@ void comandos_ingame(ConexaoPtr conexao, char simbolo, std::string tabuleiro_ini
             std::regex_search(aux, resposta, rgx);
             std::string comando = resposta[1];
             std::string codigo = resposta[2];
-            std::string result = resposta[3];
+            std::string result = resposta[4];
 
             printf("codigo: %s, result: %s\n", codigo.c_str(), result.c_str());
 
@@ -894,10 +903,10 @@ void imprime_tabuleiro(char tabuleiro[3][3]) {
 
     printf("= = = = Tabuleiro = = = =\n");
     for (i = 0; i < 2; i++) {
-        printf("         %c | %c | %c \n", tabuleiro[i][0], tabuleiro[i][1], tabuleiro[i][2]);
-        printf("        ___________\n");
+        printf(" %c | %c | %c \n", tabuleiro[i][0], tabuleiro[i][1], tabuleiro[i][2]);
+        printf("___________\n");
     }
-    printf("         %c | %c | %c \n", tabuleiro[i][0], tabuleiro[i][1], tabuleiro[i][2]);
+    printf(" %c | %c | %c \n", tabuleiro[i][0], tabuleiro[i][1], tabuleiro[i][2]);
     printf("= = = = = = = = = = = = =\n");
 }
 
