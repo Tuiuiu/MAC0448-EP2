@@ -8,7 +8,11 @@
 class Partida;
 using PartidaPtr = std::shared_ptr<Partida>;
 
-class Usuario {
+class Usuario;
+using UsuarioPtr = std::shared_ptr<Usuario>;
+
+class Usuario : public std::enable_shared_from_this<Usuario>
+{
   public:
   	Usuario(ConexaoPtr conexao, std::string login_arg, std::string senha_arg) 
   		   : conexao(conexao),conectado(true),em_jogo(false) 
@@ -26,6 +30,8 @@ class Usuario {
   	std::string get_hora_ultima_conexao();
     PartidaPtr get_partida();
     void set_partida(PartidaPtr nova_partida);
+    UsuarioPtr adversario();
+    char simbolo();
 
   private:
   	ConexaoPtr conexao;
@@ -39,6 +45,6 @@ class Usuario {
   	void set_hora_ultima_conexao();
 };
 
-using UsuarioPtr = std::shared_ptr<Usuario>;
+#include "Partida.hpp"
 
 #endif // _USUARIO_HPP

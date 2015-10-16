@@ -2,7 +2,7 @@
 
 #include "Partida.hpp"
 
-jogada Partida::fazJogada(int x, int y, char comando) {
+Jogada Partida::fazJogada(int x, int y, char comando) {
 	if (x >= 0 && x <= 2 && y >= 0 && y <= 2) {
 		if (tabuleiro[x][y] == ' ') {
 			if(comando == 'X' || comando == 'O') {
@@ -30,7 +30,7 @@ jogada Partida::fazJogada(int x, int y, char comando) {
 	}
 }
 
-resultado Partida::verificaResultado() {
+Resultado Partida::verificaResultado() {
 	for (int i = 0; i <= 2; i++) {
 		if (tabuleiro[i][0] == 'X' && tabuleiro[i][1] == 'X' && tabuleiro[i][2] == 'X')
 			return VITORIA_X;
@@ -48,6 +48,7 @@ resultado Partida::verificaResultado() {
 	 	  || (tabuleiro[0][2] == 'O' && tabuleiro[1][1] == 'O' && tabuleiro[2][0] == 'O'))
 		return VITORIA_O;
 	else {
+
 		for (int i = 0; i <= 2; i++)
 			for (int j = 0; j <= 2; j++) {
 				if (tabuleiro[i][j] == ' ')
@@ -57,7 +58,7 @@ resultado Partida::verificaResultado() {
 	}
 }
 
-Partida::Partida(UsuarioPtr jogadorX, UsuarioPtr jogadorY) : ultimoJogador(' '), jogadorX(jogadorX), jogadorY(jogadorY) {
+Partida::Partida(UsuarioPtr jogadorX, UsuarioPtr jogadorO) : ultimoJogador(' '), jogadorX(jogadorX), jogadorO(jogadorO) {
 	for (int i = 0; i <= 2; i++) {
 		for (int j = 0; j <= 2; j++)
 			tabuleiro[i][j] = ' ';
@@ -72,3 +73,43 @@ void Partida::imprimeTabuleiro() {
 	}
 }
 
+char Partida::simbolo(UsuarioPtr usuario)
+{
+	if (usuario == jogadorX)
+		return 'X';
+	if (usuario == jogadorO)
+		return 'O';
+	return '?';
+}
+
+char Partida::get_simbolo_ultimo_jogador()
+{
+	return ultimoJogador;
+}
+
+
+std::string Partida::tabuleiro_em_string()
+{
+	std::string resultado = "";
+
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+		{
+			if (tabuleiro[i][j])
+				resultado += 'N';
+			else
+				resultado += tabuleiro[i][j];
+		}
+
+	return resultado;
+}
+
+UsuarioPtr Partida::get_jogador_X()
+{
+	return jogadorX;
+}
+
+UsuarioPtr Partida::get_jogador_O()
+{
+	return jogadorO;
+}

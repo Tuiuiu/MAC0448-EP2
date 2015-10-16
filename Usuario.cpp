@@ -23,6 +23,7 @@ void Usuario::entra_jogo() {
 
 void Usuario::sai_jogo() {
 	em_jogo = false;
+	partida = nullptr;
 }
 
 std::string Usuario::get_login() {
@@ -66,4 +67,30 @@ void Usuario::set_partida(PartidaPtr nova_partida)
 {
 	partida = nova_partida;
 	em_jogo = true;
+}
+
+UsuarioPtr Usuario::adversario()
+{
+	if (!em_jogo)
+		return nullptr;
+	else
+	{
+		if (partida->get_jogador_X() == shared_from_this())
+			return partida->get_jogador_O();
+		else if (partida->get_jogador_O() == shared_from_this())
+			return partida->get_jogador_X();
+		else
+		{
+			printf ("Erro inesperado\n");
+			return nullptr;
+		}
+	}
+}
+
+char Usuario::simbolo()
+{
+	if (esta_em_jogo())
+		return partida->simbolo(shared_from_this());
+	else
+		return '?';
 }

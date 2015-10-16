@@ -50,6 +50,10 @@ void comando_request(UsuarioPtr usuario, std::string nome_oponente);
 
 void comando_answer(UsuarioPtr usuario, std::string resposta, std::string oponente);
 
+void comando_play(UsuarioPtr usuario, std::string x, std::string y);
+
+void comando_finish(UsuarioPtr usuario);
+
 int main (int argc, char **argv) {
 
 	int listenfd, connfd;
@@ -160,36 +164,59 @@ void client_connection(ConexaoPtr conexao) {
 
 		if (logado)
 		{
-			if (comando == "PREPARE_LIST")
-			{	
-				lista_foi_preparada = true;
-				comando_prepare_list(copia_lista_usuarios, usuario);
-			}
-			else if (comando == "LIST")
+			if (usuario->esta_em_jogo())
 			{
-				if(lista_foi_preparada) {
-					comando_list(copia_lista_usuarios, usuario);
-					lista_foi_preparada = false;
+				if (comando == "PLAY")
+				{
+					comando_play(usuario, arg1, arg2);
 				}
-				else 
-					usuario->escreve("REPLY 032");
+				else if (comando == "FINISH")
+				{
+					comando_finish(usuario);
+				}
+				else if (comando == "LOGOUT")
+				{
+					logado = false;
+					comando_logout(usuario);
+				}
+				else
+					conexao->envia_mensagem("REPLY 099"); // comando inválido
 			}
-			else if (comando == "LOGOUT")
+			else // quando não está em jogo
 			{
-				logado = false;
-				comando_logout(usuario);
-			}
-			else if (comando == "QUIT")
-			{
-				break;
-			}
-			else if (comando == "REQUEST")
-			{
-				comando_request(usuario, arg1);
-			}
-			else if (comando == "ANSWER")
-			{
-				comando_answer(usuario, arg1, arg2);
+				if (comando == "PREPARE_LIST")
+				{	
+					lista_foi_preparada = true;
+					comando_prepare_list(copia_lista_usuarios, usuario);
+				}
+				else if (comando == "LIST")
+				{
+					if(lista_foi_preparada) {
+						comando_list(copia_lista_usuarios, usuario);
+						lista_foi_preparada = false;
+					}
+					else 
+						usuario->escreve("REPLY 032");
+				}
+				else if (comando == "LOGOUT")
+				{
+					logado = false;
+					comando_logout(usuario);
+				}
+				else if (comando == "QUIT")
+				{
+					break;
+				}
+				else if (comando == "REQUEST")
+				{
+					comando_request(usuario, arg1);
+				}
+				else if (comando == "ANSWER")
+				{
+					comando_answer(usuario, arg1, arg2);
+				}
+				else
+					conexao->envia_mensagem("REPLY 099"); // comando inválido
 			}
 		}
 		else // comandos quando não está logado
@@ -216,12 +243,7 @@ void client_connection(ConexaoPtr conexao) {
 			}
 			else 
 			{
-				stringaux = "Antes de solicitar qualquer comando, é necessário que esteja logado.\n";
-				conexao->envia_mensagem(stringaux);
-				stringaux = "Se possui uma conta, digite \'LOGIN usuario senha\' para se conectar.\n";
-				conexao->envia_mensagem(stringaux);
-				stringaux = "Caso contrario, digite \'NEWUSR usuario senha\' para criar um novo usuário.\n";
-				conexao->envia_mensagem(stringaux);
+				conexao->envia_mensagem("REPLY 099"); // comando inválido
 			}
 		}
 		strcpy (recvline, "");
@@ -281,8 +303,17 @@ UsuarioPtr comando_login(ConexaoPtr conexao, std::string login, std::string senh
 					//stringaux = "Conectado como \'";
 					//stringaux += login;
 					//stringaux += "\'.\n";
-					std::string stringaux = "REPLY 000 ";
-					stringaux += login;
+					std::string stringaux;
+					if (user->esta_em_jogo())
+					{
+						stringaux = "REPLY 003 ";
+						stringaux += login + " " + user->simbolo() + " " + user->get_partida()->tabuleiro_em_string();
+					} 
+					else
+					{
+						stringaux = "REPLY 000 ";
+						stringaux += login;
+					}
 					conexao->envia_mensagem(stringaux);
 					return user;
 				}
@@ -406,3 +437,94 @@ void comando_answer(UsuarioPtr usuario, std::string resposta, std::string nome_o
 		}
 	}
 } 
+
+void comando_play(UsuarioPtr usuario, std::string x_str, std::string y_str)
+{
+	PartidaPtr partida = usuario->get_partida();
+	if (partida->get_simbolo_ultimo_jogador() == partida->simbolo(usuario))
+	{
+		usuario->escreve("REPLY 063"); // não é a sua vez
+	}
+	else
+	{
+		bool invalido = false;
+		if (!x_str.empty() && !y_str.empty())
+		{
+			int x = atoi(x_str.c_str());
+			int y = atoi(y_str.c_str());
+
+			switch(partida->fazJogada(x, y, partida->simbolo(usuario)))
+			{
+				case VALIDA:
+				{
+					Resultado resultado_generico = partida->verificaResultado();
+					std::string resultado_usuario, resultado_adversario;
+
+					switch(resultado_generico)
+					{
+						case VELHA:
+							resultado_usuario = resultado_adversario = "EMPATE";
+							break;
+						case NAO_ACABOU:
+							resultado_usuario = resultado_adversario = "CONTINUA";
+							break;
+						case VITORIA_X:
+							if (usuario->simbolo() == 'X')
+							{
+								resultado_usuario = "VITORIA";
+								resultado_adversario = "DERROTA";
+							}
+							else
+							{
+								resultado_usuario = "DERROTA";
+								resultado_adversario = "VITORIA";
+							}
+							break;
+						case VITORIA_O:
+							if (usuario->simbolo() == 'O')
+							{
+								resultado_usuario = "VITORIA";
+								resultado_adversario = "DERROTA";
+							}
+							else
+							{
+								resultado_usuario = "DERROTA";
+								resultado_adversario = "VITORIA";
+							}
+							break;
+							
+					}
+					usuario->escreve("REPLY 060 " + resultado_usuario);
+					usuario->adversario()->escreve("PLAY " + x_str + " " + y_str + " " + resultado_adversario);
+					break;
+				}
+				case POSICAO_INEXISTENTE:
+					usuario->escreve("REPLY 061");
+					break;
+				case POSICAO_OCUPADA:
+					usuario->escreve("REPLY 062");
+					break;
+				case AGUARDE_SUA_VEZ:
+					usuario->escreve("REPLY 063");
+					break;
+				case COMANDO_INVALIDO:
+					invalido = true;
+					break;
+				default:
+					invalido = true;
+					break;
+			}
+		}
+		else
+			invalido = true;
+
+		if (invalido)
+			printf("Comando inválido\n");
+	}
+}
+
+void comando_finish(UsuarioPtr usuario)
+{
+	usuario->adversario()->sai_jogo();
+	usuario->sai_jogo();
+}

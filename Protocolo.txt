@@ -2,9 +2,14 @@ Funções do Protocolo :
 
 Cliente envia :						|		Resposta do servidor:
 									|
-LOGIN username password				|		REPLY 000 <usuario> - Login aceito para usuario
+LOGIN <username> <password> 		|		REPLY 000 <usuario> - Login aceito para usuario
 											REPLY 001 <usuario> - Senha incorreta para usuario
 											REPLY 002 <usuario> - Usuário usuario não existe
+                                            REPLY 003 <usuario> <simb> <matriz>
+                                                - Login aceito, mas o usuário estava em jogo e precisa continuar
+                                                - simb é o símbolo do usuário (X ou Y)
+                                                - matriz tem os símbolos do tabuleiro do jogo separados por
+                                                    espaço, na ordem (0, 0), (0, 1), (0, 2), (1, 0) etc.
 ------------------------------------------------------------------------------------------											
 NEWUSR								|		REPLY 010 <usuario> - Usuario usuario criado
 											REPLY 011 <usuario> - Usuário usuario já existe
@@ -20,12 +25,12 @@ LIST (precisa ter enviado
 												- estado é "Ocioso" ou "Jogando"
 											REPLY 032 - Lista não foi preparada
 ------------------------------------------------------------------------------------------
-REQUEST opponent_name  				|		REPLY 041 <oponente> - oponente não existe
+REQUEST <opponent_name> 			|		REPLY 041 <oponente> - oponente não existe
 											REPLY 042 <oponente> - oponente não está conectado
 											REPLY 043 <oponente> - oponente já está em jogo
 											REPLY 044 <oponente> - oponente é o próprio usuário
 ------------------------------------------------------------------------------------------
-ANSWER S|N opponent_name	 		| 		REPLY 051 <oponente> - oponente não está conectado
+ANSWER <S|N> <opponent_name> 		| 		REPLY 051 <oponente> - oponente não está conectado
 											REPLY 052 <oponente> - oponente já está em jogo
 ------------------------------------------------------------------------------------------
 PLAY                                |       REPLY 060 <resultado> - jogada foi feita e o resultado
@@ -72,7 +77,7 @@ UsuarioA                  Servidor                  UsuarioB
     |                         |  <-------------------   |                          
     |                         |   ANSWER N UsuarioA     |                          
     |  <------------------    |                         |                          
-    |   ANSWER N UsuarioB     |                         |                          
+    |   ANSWER N UsuarioB     |                         |                         
     |                         |                         |                          
     |                         |                         |                          
     |                         |                         |                          
@@ -108,9 +113,9 @@ JOGANDO :
     |   ------------------>   |                         |                          
     |    PLAY SIMB x y        |                         |                     
     |   <-----------------    |  ------------------->   |                          
-    |   REPLY Cod Result      |   PLAY SIMB x y Result  |                          
+    |   REPLY Cod Result      |   PLAY SIMB x y Result  |      Result é VITORIA, EMPATE, DERROTA ou CONTINUA                    
     |                         |  <-------------------   |                          
-    |                         |   PLAY SIMB x y Result  |                          
+    |                         |   PLAY SIMB x y         |                          
     |  <------------------    |  ------------------->   |                          
     |   PLAY SIMB x y Result  |   REPLY Cod Result      |                          
     |                         |                         |                          
