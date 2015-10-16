@@ -496,6 +496,13 @@ void comando_play(UsuarioPtr usuario, std::string x_str, std::string y_str)
 					}
 					usuario->escreve("REPLY 060 " + resultado_usuario + "\n");
 					usuario->adversario()->escreve("PLAY " + x_str + " " + y_str + " " + resultado_adversario + "\n");
+
+					if (resultado_generico != VELHA)
+					{
+						usuario->adversario()->sai_jogo();
+						usuario->sai_jogo();
+					}
+
 					break;
 				}
 				case POSICAO_INEXISTENTE:
