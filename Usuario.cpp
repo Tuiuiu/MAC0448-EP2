@@ -56,3 +56,14 @@ void Usuario::set_hora_ultima_conexao()
 {
   	time (&hora_ultima_conexao);
 }
+
+PartidaPtr Usuario::get_partida()
+{
+	return partida;
+}
+
+void Usuario::set_partida(PartidaPtr nova_partida)
+{
+	partida = nova_partida;
+	em_jogo = true;
+}

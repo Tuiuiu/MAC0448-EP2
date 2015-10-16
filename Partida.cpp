@@ -57,11 +57,13 @@ resultado Partida::verificaResultado() {
 	}
 }
 
-Partida::Partida() : ultimoJogador(' ') {
+Partida::Partida(UsuarioPtr jogadorX, UsuarioPtr jogadorY) : ultimoJogador(' '), jogadorX(jogadorX), jogadorY(jogadorY) {
 	for (int i = 0; i <= 2; i++) {
 		for (int j = 0; j <= 2; j++)
 			tabuleiro[i][j] = ' ';
 	}
+
+
 }
 
 void Partida::imprimeTabuleiro() {

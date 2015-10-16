@@ -5,6 +5,8 @@
 
 #include "Conexao.hpp"
 
+class Partida;
+using PartidaPtr = std::shared_ptr<Partida>;
 
 class Usuario {
   public:
@@ -22,6 +24,8 @@ class Usuario {
   	std::string get_login();
   	bool confere_senha(std::string senha_arg);
   	std::string get_hora_ultima_conexao();
+    PartidaPtr get_partida();
+    void set_partida(PartidaPtr nova_partida);
 
   private:
   	ConexaoPtr conexao;
@@ -30,6 +34,7 @@ class Usuario {
   	bool conectado;
   	bool em_jogo;
   	time_t hora_ultima_conexao;
+    PartidaPtr partida;
   	
   	void set_hora_ultima_conexao();
 };
