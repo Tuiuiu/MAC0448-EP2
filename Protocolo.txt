@@ -2,33 +2,37 @@ Funções do Protocolo :
 
 Cliente envia :						|		Resposta do servidor:
 									|
-LOGIN username password				|		000 <usuario> - Login aceito para usuario
-											001 <usuario> - Senha incorreta para usuario
-											002 <usuario> - Usuário usuario não existe
+LOGIN username password				|		REPLY 000 <usuario> - Login aceito para usuario
+											REPLY 001 <usuario> - Senha incorreta para usuario
+											REPLY 002 <usuario> - Usuário usuario não existe
 ------------------------------------------------------------------------------------------											
-NEWUSR								|		010 <usuario> - Usuario usuario criado
-											011 <usuario> - Usuário usuario já existe
+NEWUSR								|		REPLY 010 <usuario> - Usuario usuario criado
+											REPLY 011 <usuario> - Usuário usuario já existe
 ------------------------------------------------------------------------------------------
-LOGOUT								|		020 <usuario> - Logout de usuario feito com sucesso
+LOGOUT								|		REPLY 020 <usuario> - Logout de usuario feito com sucesso
 ------------------------------------------------------------------------------------------
-PREPARE_LIST 						|		030 <num> - Diz que a lista terá num usuários
+PREPARE_LIST 						|		REPLY 030 <num> - Diz que a lista terá num usuários
 ------------------------------------------------------------------------------------------
 LIST (precisa ter enviado
-      PREPARE_LIST antes)					031 <usuario> <hora> <estado> - Entrada da lista
+      PREPARE_LIST antes)					REPLY 031 <usuario> <hora> <estado> - Entrada da lista
 												- usuario é o login
 												- hora é uma string com o horário da última conexão
 												- estado é "Ocioso" ou "Jogando"
-											032 - Lista não foi preparada
+											REPLY 032 - Lista não foi preparada
 ------------------------------------------------------------------------------------------
-REQUEST opponent_name  				|		041 <oponente> - oponente não existe
-											042 <oponente> - oponente não está conectado
-											043 <oponente> - oponente já está em jogo
-											044 <oponente> - oponente é o próprio usuário
+REQUEST opponent_name  				|		REPLY 041 <oponente> - oponente não existe
+											REPLY 042 <oponente> - oponente não está conectado
+											REPLY 043 <oponente> - oponente já está em jogo
+											REPLY 044 <oponente> - oponente é o próprio usuário
 ------------------------------------------------------------------------------------------
-ANSWER S|N opponent_name	 		| 		051 <oponente> - oponente não está conectado
-											052 <oponente> - oponente já está em jogo
+ANSWER S|N opponent_name	 		| 		REPLY 051 <oponente> - oponente não está conectado
+											REPLY 052 <oponente> - oponente já está em jogo
 ------------------------------------------------------------------------------------------
-
+PLAY                                |       REPLY 060 <resultado> - jogada foi feita e o resultado
+                                                                é retornado
+                                            REPLY 061             - jogada fora da matriz
+                                            REPLY 062             - posição já preenchida
+                                            REPLY 063             - não é a sua vez
 
 
 
@@ -88,6 +92,27 @@ UsuarioA                  Servidor                  UsuarioB
     |                         |   RECEIVED UsuarioA     |                          
     |  <------------------    |  ------------------->   |                          
     |   REPLY 040 UsuarioB    |   REPLY                 |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+    |                         |                         |                          
+
+
+
+JOGANDO :
+    UsuarioA                  Servidor                  UsuarioB
+    |   ------------------>   |                         |                          
+    |    PLAY SIMB x y        |                         |                     
+    |   <-----------------    |  ------------------->   |                          
+    |   REPLY Cod Result      |   PLAY SIMB x y Result  |                          
+    |                         |  <-------------------   |                          
+    |                         |   PLAY SIMB x y Result  |                          
+    |  <------------------    |  ------------------->   |                          
+    |   PLAY SIMB x y Result  |   REPLY Cod Result      |                          
     |                         |                         |                          
     |                         |                         |                          
     |                         |                         |                          
