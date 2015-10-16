@@ -21,8 +21,6 @@ $ ./servidor <porta>
 Por exemplo,
 $ ./servidor 8000
 
-O log é gravado no arquivo log.txt.
-
 
 Para rodar o cliente:
 $ ./cliente <Endereco IP|Nome> <Porta> <TCP|UDP>

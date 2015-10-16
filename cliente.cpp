@@ -223,7 +223,7 @@ void recebe_mensagens_servidor(ConexaoPtr conexao) {
                 }
 
                 imprime_tabuleiro(tabuleiro);
-                printf("Digite \"JOGADA x y\" para realizar uma jogada ou \"MSG texto\" para enviar uma mensagem ao seu oponente.\n");
+                printf("Digite \"JOGADA x y\" para realizar uma jogada.\n");
 
             } else {
                 mensagens.push(Mensagem(recvline, prioridade));            
@@ -279,7 +279,7 @@ void interacao_usuario(ConexaoPtr conexao) {
             bool error;
             do {
                 printf ("\n=============== MENU PRINCIPAL ===============\n");
-                printf ("Digite:\n  1 para listar jogadores conectados\n  2 para enviar convite de jogo\n  3 para ver os convites recebidos\n  4 para ver o hall of fame\n  5 para logout\n  6 para sair do programa\n");
+                printf ("Digite:\n  1 para listar jogadores conectados\n  2 para enviar convite de jogo\n  3 para ver os convites recebidos\n  4 para logout\n  5 para sair do programa\n");
                 std::cin >> opcao;
                 error = std::cin.fail();
                 std::cin.clear();
@@ -297,14 +297,11 @@ void interacao_usuario(ConexaoPtr conexao) {
                 case 3: 
                     ver_convites(conexao);
                     break;
-                case 4:
-                    //
-                    break;
-                case 5: 
+                case 4: 
                     efetuar_logout(conexao);
                     logado = false;
                     break;
-                case 6: 
+                case 5: 
                     efetuar_logout(conexao);
                     quer_sair = true; 
                     break;
